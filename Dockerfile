@@ -14,6 +14,10 @@ RUN chmod +x /usr/local/bin/install-php-extensions \
  && install-php-extensions pdo_pgsql pgsql intl mbstring zip opcache
 COPY docker/php/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
 COPY docker/php/php.ini     /usr/local/etc/php/conf.d/keyforge.ini
+# entrypoint in base so BOTH the test stage (compose `keyforge-test` waits for DB
+# + migrates the test DB) and runtime can exec it. 0755: readable by non-root user.
+COPY docker/php/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod 0755 /usr/local/bin/entrypoint.sh
 WORKDIR /var/www/keyforge
 
 # ---- vendor: production deps only (no dev) ----
@@ -35,10 +39,11 @@ RUN composer install --no-scripts --no-interaction --prefer-dist \
 FROM base AS test
 COPY . .
 COPY --from=vendor-dev /app/vendor ./vendor
-# Root codeception.yml includes only `common` (DB-less Unit suite); `build`
-# generates the actor classes, then `run` executes the gate without Postgres.
+# `build` generates actor classes; the gate runs only the DB-less Unit suite
+# (--skip Integration) since this build stage has no Postgres. The Integration
+# suite runs in CI and `make test` against a real Postgres.
 RUN vendor/bin/codecept build \
- && vendor/bin/codecept run --no-colors \
+ && vendor/bin/codecept run --skip Integration --no-colors \
  && mkdir -p /artifacts && date > /artifacts/unit-tests-passed
 
 # ---- runtime: slim production image ----
@@ -54,10 +59,6 @@ RUN rm -rf tests .github \
  && mkdir -p backend/runtime backend/web/assets \
              frontend/runtime frontend/web/assets console/runtime \
  && chown -R keyforge:keyforge /var/www/keyforge
-COPY docker/php/entrypoint.sh /usr/local/bin/entrypoint.sh
-# 0755 (not `+x`): world-readable+executable so the non-root `keyforge` user can
-# read/exec it regardless of the source file's host permissions.
-RUN chmod 0755 /usr/local/bin/entrypoint.sh
 USER keyforge
 EXPOSE 9000
 ENTRYPOINT ["entrypoint.sh"]

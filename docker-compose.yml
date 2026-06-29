@@ -57,6 +57,8 @@ services:
       # PG18+ official image stores data in a major-version subdir and wants the
       # mount at /var/lib/postgresql (NOT .../data) — enables future pg_upgrade.
       - keyforge_pgdata:/var/lib/postgresql
+      # Runs once on fresh init: creates the keyforge_test database (make test / CI parity).
+      - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${KEYFORGE_DB_USER:-keyforge} -d ${KEYFORGE_DB_NAME:-keyforge}"]
       interval: 5s
@@ -78,7 +80,9 @@ services:
     environment:
       KEYFORGE_DB_HOST: keyforge-postgres
       KEYFORGE_DB_PORT: 5432
-      KEYFORGE_DB_NAME: ${KEYFORGE_DB_NAME:-keyforge}
+      # Migrate AND test the dedicated test DB so `php yii migrate` and the test
+      # connection (test-local.php -> keyforge_test) point at the same database.
+      KEYFORGE_DB_NAME: ${KEYFORGE_TEST_DB_NAME:-keyforge_test}
       KEYFORGE_DB_USER: ${KEYFORGE_DB_USER:-keyforge}
       KEYFORGE_DB_PASSWORD: ${KEYFORGE_DB_PASSWORD:-keyforge_local_pw}
       RUN_MIGRATIONS: "true"
