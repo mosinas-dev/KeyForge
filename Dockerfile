@@ -31,7 +31,10 @@ RUN composer install --no-scripts --no-interaction --prefer-dist \
 FROM base AS test
 COPY . .
 COPY --from=vendor-dev /app/vendor ./vendor
-RUN vendor/bin/codecept run unit --no-colors \
+# Root codeception.yml includes only `common` (DB-less Unit suite); `build`
+# generates the actor classes, then `run` executes the gate without Postgres.
+RUN vendor/bin/codecept build \
+ && vendor/bin/codecept run --no-colors \
  && mkdir -p /artifacts && date > /artifacts/unit-tests-passed
 
 # ---- runtime: slim production image ----

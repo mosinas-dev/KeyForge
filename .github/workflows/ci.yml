@@ -51,6 +51,9 @@ jobs:
       - name: Migrate test database
         run: php yii migrate --interactive=0
 
+      - name: Build Codeception actors
+        run: vendor/bin/codecept build
+
       - name: Run tests
         run: vendor/bin/codecept run --no-colors
 

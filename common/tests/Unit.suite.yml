@@ -1,0 +1,14 @@
+# Codeception Test Suite Configuration
+
+# suite for unit (internal) tests.
+# RUN `build` COMMAND AFTER ADDING/REMOVING MODULES.
+actor: UnitTester
+bootstrap: false
+modules:
+    enabled:
+        - Asserts
+        # No `orm` part: unit tests stay DB-less (no per-test transaction), so the
+        # Docker build-stage gate runs without Postgres. DB-backed tests live in the
+        # integration suite on real Postgres (Testcontainers / `make test`) — see plan.
+        - Yii2:
+            part: [fixtures, email]

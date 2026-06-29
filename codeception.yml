@@ -1,0 +1,13 @@
+# Global codeception file. KeyForge domain logic lives in common/, so only the
+# common suites are wired now. backend/frontend test suites are re-enabled in
+# Phase 7 (admin/UI) when they get real tests — YAGNI until then.
+include:
+    - common
+paths:
+    output: console/runtime/output
+settings:
+    colors: true
+    memory_limit: 1024M
+extensions:
+    enabled:
+        - Codeception\Extension\RunFailed
