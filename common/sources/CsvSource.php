@@ -16,6 +16,8 @@ use League\Csv\Reader;
  */
 final class CsvSource implements KeywordSourceProvider
 {
+    use SourceValueParser;
+
     private string $filePath;
     private string $sourceType;
     /** @var array<string,?string> canonical field => CSV header (or null if absent) */
@@ -106,32 +108,15 @@ final class CsvSource implements KeywordSourceProvider
      */
     private function mapRecord(array $record, array $fieldIndex): array
     {
-        $value = static function (?int $index) use ($record): ?string {
-            if ($index === null || !array_key_exists($index, $record)) {
-                return null;
-            }
-            $trimmed = trim((string) $record[$index]);
-
-            return $trimmed === '' ? null : $trimmed;
-        };
+        $cell = static fn (?int $index): ?string =>
+            ($index !== null && array_key_exists($index, $record)) ? (string) $record[$index] : null;
 
         return [
-            'raw_keyword' => (string) ($value($fieldIndex['raw_keyword']) ?? ''),
-            'search_volume' => $this->parseVolume($value($fieldIndex['search_volume'])),
-            'source_country' => $value($fieldIndex['source_country']),
-            'source_url' => $value($fieldIndex['source_url']),
-            'source_language' => $value($fieldIndex['source_language']),
+            'raw_keyword' => (string) ($this->cleanString($cell($fieldIndex['raw_keyword'])) ?? ''),
+            'search_volume' => $this->parseVolume($cell($fieldIndex['search_volume'])),
+            'source_country' => $this->cleanString($cell($fieldIndex['source_country'])),
+            'source_url' => $this->cleanString($cell($fieldIndex['source_url'])),
+            'source_language' => $this->cleanString($cell($fieldIndex['source_language'])),
         ];
-    }
-
-    /** Non-numeric, empty, or negative volume -> null (§11). */
-    private function parseVolume(?string $raw): ?int
-    {
-        if ($raw === null) {
-            return null;
-        }
-        $int = filter_var($raw, FILTER_VALIDATE_INT);
-
-        return ($int === false || $int < 0) ? null : $int;
     }
 }
