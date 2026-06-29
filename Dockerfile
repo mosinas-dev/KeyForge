@@ -5,9 +5,13 @@
 # `docker build` (target=runtime) FAILS if the unit-test gate fails.
 
 # ---- base: php-fpm + extensions, shared by every stage ----
-FROM php:8.3-fpm-alpine AS base
-RUN apk add --no-cache icu-dev postgresql-dev libzip-dev oniguruma-dev \
- && docker-php-ext-install -j"$(nproc)" pdo_pgsql pgsql intl mbstring zip opcache
+# Extensions via mlocati/docker-php-extension-installer: prebuilt where available
+# (fast + deterministic), auto-manages system libs, and avoids the parallel
+# `docker-php-ext-install -j` race ("cp: can't stat 'modules/*'"). Supports PHP 8.5.
+FROM php:8.5-fpm-alpine AS base
+ADD https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
+RUN chmod +x /usr/local/bin/install-php-extensions \
+ && install-php-extensions pdo_pgsql pgsql intl mbstring zip opcache
 COPY docker/php/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
 COPY docker/php/php.ini     /usr/local/etc/php/conf.d/keyforge.ini
 WORKDIR /var/www/keyforge
@@ -51,7 +55,9 @@ RUN rm -rf tests .github \
              frontend/runtime frontend/web/assets console/runtime \
  && chown -R keyforge:keyforge /var/www/keyforge
 COPY docker/php/entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+# 0755 (not `+x`): world-readable+executable so the non-root `keyforge` user can
+# read/exec it regardless of the source file's host permissions.
+RUN chmod 0755 /usr/local/bin/entrypoint.sh
 USER keyforge
 EXPOSE 9000
 ENTRYPOINT ["entrypoint.sh"]

@@ -45,7 +45,7 @@ services:
     restart: unless-stopped
 
   keyforge-postgres:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     container_name: keyforge-postgres
     environment:
       POSTGRES_DB: ${KEYFORGE_DB_NAME:-keyforge}
@@ -54,7 +54,9 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - keyforge_pgdata:/var/lib/postgresql/data
+      # PG18+ official image stores data in a major-version subdir and wants the
+      # mount at /var/lib/postgresql (NOT .../data) — enables future pg_upgrade.
+      - keyforge_pgdata:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${KEYFORGE_DB_USER:-keyforge} -d ${KEYFORGE_DB_NAME:-keyforge}"]
       interval: 5s
