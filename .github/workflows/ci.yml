@@ -1,0 +1,102 @@
+name: ci
+
+# Test on every push/PR. Publish the image to GHCR only on main and version tags.
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+# Least privilege: read source, write packages (needed for GHCR push).
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  # ---- Gate 1: TESTS FIRST (TDD). Image build runs only if this passes. ----
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: keyforge_test
+          POSTGRES_USER: keyforge
+          POSTGRES_PASSWORD: keyforge_test_pw
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U keyforge -d keyforge_test"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      KEYFORGE_DB_HOST: 127.0.0.1
+      KEYFORGE_DB_PORT: 5432
+      KEYFORGE_DB_NAME: keyforge_test
+      KEYFORGE_DB_USER: keyforge
+      KEYFORGE_DB_PASSWORD: keyforge_test_pw
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: pdo_pgsql, pgsql, intl, mbstring, zip
+          coverage: none
+
+      - name: Install dependencies (with dev for tests)
+        run: composer install --no-interaction --prefer-dist
+
+      # CI is a disposable env, so applying migrations here is allowed.
+      - name: Migrate test database
+        run: php yii migrate --interactive=0
+
+      - name: Run tests
+        run: vendor/bin/codecept run --no-colors
+
+  # ---- Gate 2: build image + push to GHCR (only after tests pass) ----
+  build-and-push:
+    needs: test
+    runs-on: ubuntu-latest
+    # Never publish from PRs (forks have no secrets) — only main + tags.
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      # GHCR requires a lowercase image path; owner/repo may contain uppercase.
+      - name: Compute lowercase image name
+        run: echo "IMAGE_NAME=${REPO,,}" >> "$GITHUB_ENV"
+        env:
+          REPO: ${{ github.repository }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive image tags + labels
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,format=short
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: runtime
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

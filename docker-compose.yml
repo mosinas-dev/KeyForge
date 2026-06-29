@@ -1,0 +1,99 @@
+# KeyForge — one-command local stack.
+#
+#   docker compose up -d      # from a fresh clone: builds, waits for DB,
+#                             # auto-migrates + seeds, serves the app. Zero-touch.
+#   Admin: http://localhost:8080/admin
+#
+name: keyforge
+
+services:
+  keyforge-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime          # runtime build runs the unit-test gate (see Dockerfile)
+    image: keyforge-app:local
+    container_name: keyforge-app
+    depends_on:
+      keyforge-postgres:
+        condition: service_healthy   # app starts only after DB is ready
+    environment:
+      KEYFORGE_DB_HOST: keyforge-postgres
+      KEYFORGE_DB_PORT: 5432
+      KEYFORGE_DB_NAME: ${KEYFORGE_DB_NAME:-keyforge}
+      KEYFORGE_DB_USER: ${KEYFORGE_DB_USER:-keyforge}
+      KEYFORGE_DB_PASSWORD: ${KEYFORGE_DB_PASSWORD:-keyforge_local_pw}
+      # Local DB is disposable -> auto-migrate+seed for true zero-touch boot.
+      # (Shared/prod still governed by the manual-migrate rule; image default is false.)
+      RUN_MIGRATIONS: "true"
+    volumes:
+      - ./:/var/www/keyforge                       # live source for vibe-code iteration
+      - keyforge_vendor:/var/www/keyforge/vendor   # vendor seeded from the image (don't shadow it)
+    restart: unless-stopped
+
+  keyforge-nginx:
+    image: nginx:1.27-alpine
+    container_name: keyforge-nginx
+    depends_on:
+      - keyforge-app
+    ports:
+      - "8080:80"     # admin (backend/web)
+      # - "8081:81"   # frontend upload UI — enable when frontend/web exists
+    volumes:
+      - ./:/var/www/keyforge:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: unless-stopped
+
+  keyforge-postgres:
+    image: postgres:16-alpine
+    container_name: keyforge-postgres
+    environment:
+      POSTGRES_DB: ${KEYFORGE_DB_NAME:-keyforge}
+      POSTGRES_USER: ${KEYFORGE_DB_USER:-keyforge}
+      POSTGRES_PASSWORD: ${KEYFORGE_DB_PASSWORD:-keyforge_local_pw}
+    ports:
+      - "5432:5432"
+    volumes:
+      - keyforge_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${KEYFORGE_DB_USER:-keyforge} -d ${KEYFORGE_DB_NAME:-keyforge}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  # Full test suite (unit + integration on real Postgres). Not part of `up`.
+  #   docker compose --profile test run --rm keyforge-test
+  keyforge-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: test
+    image: keyforge-app:test
+    depends_on:
+      keyforge-postgres:
+        condition: service_healthy
+    environment:
+      KEYFORGE_DB_HOST: keyforge-postgres
+      KEYFORGE_DB_PORT: 5432
+      KEYFORGE_DB_NAME: ${KEYFORGE_DB_NAME:-keyforge}
+      KEYFORGE_DB_USER: ${KEYFORGE_DB_USER:-keyforge}
+      KEYFORGE_DB_PASSWORD: ${KEYFORGE_DB_PASSWORD:-keyforge_local_pw}
+      RUN_MIGRATIONS: "true"
+    entrypoint: ["entrypoint.sh"]
+    command: ["vendor/bin/codecept", "run", "--no-colors"]
+    profiles: ["test"]
+
+  # Redis backs the DEFERRED async queue (§13 spec). Parked behind a profile so
+  # it does NOT start with `up`. Start with: docker compose --profile queue up -d
+  keyforge-redis:
+    image: redis:7-alpine
+    container_name: keyforge-redis
+    ports:
+      - "6379:6379"
+    profiles: ["queue"]
+    restart: unless-stopped
+
+volumes:
+  keyforge_pgdata:
+  keyforge_vendor:

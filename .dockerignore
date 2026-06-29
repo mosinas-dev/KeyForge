@@ -1,0 +1,6 @@
+.git
+**/runtime/*
+**/web/assets/*
+vendor
+node_modules
+.env
