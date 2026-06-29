@@ -14,7 +14,7 @@ down: ## Stop the stack (keeps data)
 
 fresh: ## Wipe everything (DB + vendor volume) and start clean
 	$(COMPOSE) down -v
-	$(COMPOSE) up -d
+	$(COMPOSE) up -d --build
 
 rebuild: ## Rebuild image after composer.json change (drops stale vendor volume)
 	$(COMPOSE) down
@@ -31,7 +31,7 @@ migrate: ## Apply migrations manually (for when RUN_MIGRATIONS is off)
 	$(COMPOSE) exec keyforge-app php yii migrate
 
 test: ## Run the FULL suite (unit + integration on Postgres)
-	$(COMPOSE) --profile test run --rm keyforge-test
+	$(COMPOSE) --profile test run --rm --build keyforge-test
 
 pull: ## Pull the published image from GHCR (usage: make pull REPO=owner/repo)
 	docker pull ghcr.io/$(REPO):latest
