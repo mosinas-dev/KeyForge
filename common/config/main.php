@@ -15,5 +15,10 @@ return [
         'cache' => [
             'class' => \yii\caching\FileCache::class,
         ],
+        // RBAC backend (DbManager) — shared by console (seed migration) and backend
+        // (admin access control, Phase 7). Roles admin/marketer seeded per ADR 0006.
+        'authManager' => [
+            'class' => \yii\rbac\DbManager::class,
+        ],
     ],
 ];

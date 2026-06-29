@@ -23,6 +23,15 @@ return [
             'class' => \yii\console\controllers\FixtureController::class,
             'namespace' => 'common\fixtures',
           ],
+        // `yii migrate` applies our migrations AND Yii's RBAC schema (auth_* tables);
+        // rbac_init (2014) sorts before our 2026 migrations, so it runs first.
+        'migrate' => [
+            'class' => \yii\console\controllers\MigrateController::class,
+            'migrationPath' => [
+                '@console/migrations',
+                '@yii/rbac/migrations',
+            ],
+        ],
     ],
     'components' => [
         'log' => [
