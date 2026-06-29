@@ -1,0 +1,9 @@
+keyword,match_type,campaign,ad_group,status,avg_monthly_searches,language,final_url
+website builder,PHRASE,SP_EN_Brand,Builder_EN,ENABLED,49000,en,https://site.pro/en
+create website free,BROAD,SP_EN_Generic,Free_EN,ENABLED,33000,en,https://site.pro/en
+free website builder,PHRASE,SP_EN_Generic,Free_EN,ENABLED,27000,en,https://site.pro/en
+конструктор сайтов,PHRASE,SP_RU_Generic,Builder_RU,ENABLED,40000,ru,https://site.pro/ru
+создать сайт бесплатно,BROAD,SP_RU_Generic,Free_RU,ENABLED,22000,ru,https://site.pro/ru
+criar site gratis,PHRASE,SP_PT_Generic,Free_PT,ENABLED,18000,pt,https://site.pro/pt
+site pro builder,EXACT,SP_EN_Brand,Brand_EN,ENABLED,1200,en,https://site.pro/en
+homepage baukasten,PHRASE,SP_DE_Generic,Builder_DE,PAUSED,9000,de,https://site.pro/de
