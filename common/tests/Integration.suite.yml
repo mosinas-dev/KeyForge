@@ -1,0 +1,11 @@
+# Integration suite — runs against a REAL PostgreSQL (keyforge_test), not sqlite.
+# This is where pg_trgm / advisory-lock / index assertions live (CLAUDE.md rule 7).
+# DB-less unit tests stay in Unit.suite.yml; the Docker build gate runs only Unit.
+# RUN `vendor/bin/codecept build` after adding/removing modules.
+actor: IntegrationTester
+bootstrap: false
+modules:
+    enabled:
+        - Asserts
+        - Yii2:
+            part: [orm]
