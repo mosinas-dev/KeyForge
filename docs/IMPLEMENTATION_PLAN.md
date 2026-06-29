@@ -41,7 +41,7 @@
 
 ## Фаза 0 — Bootstrap (agent A1/A3)
 **Цель:** пустой каркас Yii2 поднимается через `docker compose up -d`.
-**Сделать:** `yii2-app-advanced` (composer create-project), `init`, конфиг БД на pgsql из `KEYFORGE_DB_*` env, Codeception (unit/integration/functional, pgsql-подключение для integration), `composer.json`/`composer.lock`. Файлы инфры уже даны — не переписывать.
+**Сделать:** `yii2-app-advanced` (composer create-project), `init`, конфиг БД на pgsql из `KEYFORGE_DB_*` env, Codeception (unit/integration/functional, pgsql-подключение для integration), `composer.json`/`composer.lock`. 
 **Тесты-первыми:** smoke — приложение бутстрапится, healthcheck отвечает.
 **Гейт:** `docker compose up -d` собирает образ (тест-гейт проходит на пустом unit-сьюте), `http://localhost:8080` отдаёт страницу backend, CI зелёный.
 
