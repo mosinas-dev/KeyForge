@@ -119,7 +119,8 @@ keyforge/
 │   └── gads_export_format.md      # формат выгрузки Google Ads Editor
 ├── docker-compose.yml             # php-fpm + nginx + postgres (+ redis за профилем)
 ├── common/
-│   ├── models/                    # ActiveRecord (Gii): Project, Keyword, AdGroup, ResponsiveSearchAd, ...
+│   ├── models/                    # ActiveRecord — только для admin-грид/preview (§15.7): Keyword, AdGroup, ResponsiveSearchAd, User
+│   ├── repositories/              # порты + Pg-адаптеры: весь SQL за интерфейсами (§15.12) — Keyword/Config/AdGroup/Negative/ImportBatch
 │   ├── pipeline/
 │   │   ├── PipelineStage.php       # interface: run(PipelineContext): PipelineContext
 │   │   ├── PipelineRunner.php      # линейный прогон упорядоченного списка стадий (НЕ DAG)
@@ -135,19 +136,16 @@ keyforge/
 │   │       ├── GadsPrepStage.php
 │   │       ├── AdGenerationStage.php
 │   │       └── ExportStage.php
-│   ├── sources/                   # KeywordSourceProvider: CsvSource, JsonSource (API — отложено)
-│   ├── export/                    # CampaignExporter: GoogleAdsEditorExporter
-│   ├── adgen/                     # AdCopyGenerator: LlmAdCopyGenerator + RsaLengthValidator
-│   └── services/                  # shared: KeywordNormalizer, ...
+│   ├── sources/                   # KeywordSourceProvider: CsvSource, JsonSource (+ CsvSourceCatalog; API — отложено)
+│   ├── export/                    # CampaignExporter: GoogleAdsEditorExporter (+ ExportResult)
+│   ├── adgen/                     # AdCopyGenerator: TemplateAdCopyGenerator (LLM-адаптер — отложен) + RsaLengthValidator + AdCopy/AdCopyRequest (readonly DTO) + RsaValidationResult
+│   └── services/                  # KeywordNormalizer, Junk/IntentClassifier, TermMatcher, LanguageDetector, ImportHashCalculator, KeywordPipelineService (фасад пайплайна)
 ├── console/
-│   ├── controllers/               # KeyforgeController: import / prepare-gads / export
-│   └── migrations/                # схема + seed config_* (бренды, forbidden, пороги, language→url)
-├── backend/                       # админка: RBAC, AdminLTE, upload, CRUD-ревью ключей, preview, export
+│   ├── controllers/               # KeyforgeController: import / prepare-gads / export (тонкий, через KeywordPipelineService)
+│   └── migrations/                # схема + seed config_*/RBAC/admin-user
+├── backend/                       # админка: RBAC, upload, CRUD-ревью ключей, preview, export (KeyforgeController + UploadForm + views); вход admin/admin-password
 ├── config/                        # incl. gii.php
-├── tests/
-│   ├── unit/                      # чистые функции (нормализация, интент, валидатор RSA)
-│   ├── integration/               # SQL-операции на Testcontainers pgsql (dedup, фильтры)
-│   └── e2e/                       # 4 CSV → экспорт, ассерты §9 spec
+├── common/tests/                  # Unit (чистые функции) + Integration (SQL/репозитории/стадии/e2e §9) на Testcontainers pgsql
 └── sample_data/                   # 4 готовых CSV (грязные: дубли/мусор/бренды/мультиязык)
 ```
 
@@ -196,3 +194,6 @@ SQL-first для множественных операций (dedup через `
 
 - **`project_id` — ПРИНЯТО.** `NOT NULL DEFAULT 1` (FK → `project`) на всех tenant-scoped таблицах, индексы ведут с `project_id`, `UNIQUE(project_id, import_hash)`, seed `project(id=1,'Site.pro')` — закладывается в Фазе 1. Tenant-изоляция/UI отложены (§13 spec).
 - **Forbidden-список и `language→url`** — сидятся заглушками (редактируются в админке); реальные значения от Борцов Гроуп подменяют seed позже. Не блокер.
+- **Repository-слой (§15) — РЕАЛИЗОВАН.** Весь SQL живёт только в `Pg*Repository` за интерфейсами (`common/repositories`); стадии/сервисы не зависят от `Yii::$app`/`Connection`. Биндинги портов→адаптеров — в `common/config/main.php` (`container.singletons`). Оркестрация пайплайна — `KeywordPipelineService` (общий для console и backend).
+- **Дефолтный админ — `admin` / `admin-password`** (seed-миграция `m260630_061245`, роль `admin`): zero-touch вход на `:8080`. Дев-удобство — **сменить пароль для shared/prod**.
+- **`frontend`-приложение удалено.** Раскладка = `console` (пайплайн) + `backend` (админка) + `common` (домен). Upload-UI живёт в backend.
