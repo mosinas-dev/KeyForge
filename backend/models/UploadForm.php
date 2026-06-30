@@ -30,6 +30,6 @@ final class UploadForm extends Model
 
     public function attributeLabels(): array
     {
-        return ['file' => 'CSV file', 'sourceType' => 'Source type'];
+        return ['file' => 'Source file (CSV or JSON)', 'sourceType' => 'Source type'];
     }
 }

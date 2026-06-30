@@ -76,8 +76,8 @@ final class KeyforgeController extends Controller
     {
         $form = new UploadForm();
         if (Yii::$app->request->isPost) {
-            $form->file = UploadedFile::getInstance($form, 'file');
             $form->load(Yii::$app->request->post());
+            $form->file = UploadedFile::getInstance($form, 'file');
             if ($form->validate()) {
                 $context = $this->import($form);
                 $ingest = $context->stageStats()['ingest'];
