@@ -8,8 +8,8 @@ use backend\models\UploadForm;
 use common\models\AdGroup;
 use common\models\Keyword;
 use common\services\KeywordPipelineService;
-use common\sources\CsvSource;
 use common\sources\CsvSourceCatalog;
+use common\sources\KeywordSourceFactory;
 use Yii;
 use yii\data\ActiveDataProvider;
 use yii\filters\AccessControl;
@@ -149,11 +149,12 @@ final class KeyforgeController extends Controller
     {
         $uploadDir = Yii::getAlias('@runtime/uploads');
         FileHelper::createDirectory($uploadDir);
-        $savedPath = $uploadDir . '/' . bin2hex(random_bytes(6)) . '.csv';
+        $extension = strtolower((string) $form->file->extension);
+        $savedPath = $uploadDir . '/' . bin2hex(random_bytes(6)) . '.' . $extension;
         $form->file->saveAs($savedPath);
 
-        $source = new CsvSource($savedPath, $form->sourceType, CsvSourceCatalog::columnMapFor($form->sourceType));
+        $source = KeywordSourceFactory::build($savedPath, $form->sourceType);
 
-        return $this->pipeline->importSource(self::PROJECT_ID, $source, $form->file->baseName . '.csv');
+        return $this->pipeline->importSource(self::PROJECT_ID, $source, $form->file->baseName . '.' . $extension);
     }
 }

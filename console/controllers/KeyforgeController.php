@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace console\controllers;
 
 use common\services\KeywordPipelineService;
-use common\sources\CsvSourceCatalog;
+use common\sources\KeywordSourceFactory;
 use InvalidArgumentException;
 use Yii;
 use yii\console\Controller;
@@ -69,14 +69,15 @@ final class KeyforgeController extends Controller
 
             return ExitCode::DATAERR;
         }
-        if (strtolower(pathinfo($path, PATHINFO_EXTENSION)) !== 'csv') {
-            $this->stderr("Only .csv sources are wired up so far\n", Console::FG_RED);
+        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        if (!in_array($extension, ['csv', 'json'], true)) {
+            $this->stderr("Only .csv and .json sources are supported (got '.{$extension}')\n", Console::FG_RED);
 
             return ExitCode::DATAERR;
         }
 
         try {
-            $source = CsvSourceCatalog::fromFile($path);
+            $source = KeywordSourceFactory::fromFile($path);
         } catch (InvalidArgumentException $exception) {
             $this->stderr($exception->getMessage() . "\n", Console::FG_RED);
 

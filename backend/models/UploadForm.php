@@ -22,7 +22,7 @@ final class UploadForm extends Model
     {
         return [
             [['file'], 'required'],
-            [['file'], 'file', 'extensions' => 'csv', 'checkExtensionByMimeType' => false, 'maxSize' => 32 * 1024 * 1024],
+            [['file'], 'file', 'extensions' => 'csv, json', 'checkExtensionByMimeType' => false, 'maxSize' => 32 * 1024 * 1024],
             [['sourceType'], 'required'],
             [['sourceType'], 'in', 'range' => CsvSourceCatalog::sourceTypes()],
         ];

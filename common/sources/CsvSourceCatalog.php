@@ -33,12 +33,12 @@ final class CsvSourceCatalog
         ],
     ];
 
-    /** Sample file name => source_type. */
+    /** File-name stem (without extension) => source_type. Same column map serves CSV and JSON. */
     private const FILENAME_TO_TYPE = [
-        'ahrefs_organic_keywords.csv' => 'ahrefs_organic',
-        'ahrefs_paid_keywords.csv' => 'ahrefs_paid',
-        'google_ads_keywords.csv' => 'google_ads',
-        'search_console_queries.csv' => 'search_console',
+        'ahrefs_organic_keywords' => 'ahrefs_organic',
+        'ahrefs_paid_keywords' => 'ahrefs_paid',
+        'google_ads_keywords' => 'google_ads',
+        'search_console_queries' => 'search_console',
     ];
 
     public static function fromFile(string $filePath): CsvSource
@@ -54,14 +54,15 @@ final class CsvSourceCatalog
         return array_keys(self::COLUMN_MAPS);
     }
 
+    /** Source type inferred from the file-name stem, regardless of .csv/.json extension. */
     public static function sourceTypeForFile(string $filePath): string
     {
-        $name = basename($filePath);
-        if (!isset(self::FILENAME_TO_TYPE[$name])) {
-            throw new InvalidArgumentException("Unknown source file '{$name}'. Known: " . implode(', ', array_keys(self::FILENAME_TO_TYPE)));
+        $stem = pathinfo($filePath, PATHINFO_FILENAME);
+        if (!isset(self::FILENAME_TO_TYPE[$stem])) {
+            throw new InvalidArgumentException("Unknown source file '{$stem}'. Known: " . implode(', ', array_keys(self::FILENAME_TO_TYPE)));
         }
 
-        return self::FILENAME_TO_TYPE[$name];
+        return self::FILENAME_TO_TYPE[$stem];
     }
 
     /** @return array<string,?string> */
