@@ -84,7 +84,7 @@ final class AdGenerationStage implements PipelineStage
 
     private function isAcceptable(AdCopy $copy, string $language): bool
     {
-        if (!$this->validator->isValid($copy)) {
+        if (!$this->validator->validate($copy)->isValid()) {
             return false;
         }
         $combined = implode(' ', array_merge($copy->headlineTexts(), $copy->descriptionTexts()));

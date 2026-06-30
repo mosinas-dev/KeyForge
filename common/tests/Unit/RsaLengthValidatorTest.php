@@ -25,8 +25,8 @@ class RsaLengthValidatorTest extends Unit
     public function testValidCopyPasses(): void
     {
         $copy = AdCopy::of(['Build a website', 'Free website builder', 'Start today'], ['Make your site now', 'Easy and fast']);
-        $this->assertSame([], $this->validator->validate($copy));
-        $this->assertTrue($this->validator->isValid($copy));
+        $this->assertSame([], $this->validator->validate($copy)->violations);
+        $this->assertTrue($this->validator->validate($copy)->isValid());
     }
 
     public function testHeadlineLengthBoundary(): void

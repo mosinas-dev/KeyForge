@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace common\pipeline\stages;
 
 use common\export\CampaignExporter;
+use common\export\ExportResult;
 use common\repositories\AdGroupRepositoryInterface;
 use common\repositories\KeywordRepositoryInterface;
 use common\repositories\NegativeKeywordRepositoryInterface;
@@ -27,10 +28,13 @@ final class ExportStage
     ) {
     }
 
-    /** @return array<string,string> file name => content */
-    public function export(int $projectId): array
+    public function export(int $projectId): ExportResult
     {
-        return $this->exporter->export($this->buildGroups($projectId), $this->negatives->allTexts($projectId));
+        $groups = $this->buildGroups($projectId);
+        $negatives = $this->negatives->allTexts($projectId);
+        $files = $this->exporter->export($groups, $negatives);
+
+        return new ExportResult($files, count($groups), count($negatives));
     }
 
     /** @return array<int,array> */

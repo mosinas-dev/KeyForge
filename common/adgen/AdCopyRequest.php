@@ -9,7 +9,7 @@ namespace common\adgen;
  * keywords to theme the ad on, and an optional brand headline to pin to position 1.
  * Plain DTO.
  */
-final class AdCopyRequest
+final readonly class AdCopyRequest
 {
     /** @param string[] $keywords */
     public function __construct(

@@ -178,16 +178,20 @@ final class KeyforgeController extends Controller
      */
     public function actionExport(): int
     {
-        $files = (new ExportStage($this->adGroups, $this->keywords, $this->negatives, $this->campaignExporter))
+        $result = (new ExportStage($this->adGroups, $this->keywords, $this->negatives, $this->campaignExporter))
             ->export($this->projectId);
 
         $dir = Yii::getAlias($this->outputDir);
         FileHelper::createDirectory($dir);
-        foreach ($files as $name => $content) {
+        foreach ($result->files as $name => $content) {
             $path = $dir . DIRECTORY_SEPARATOR . $name;
             file_put_contents($path, $content);
             $this->stdout("Wrote {$path}\n", Console::FG_GREEN);
         }
+        $this->stdout(
+            "Exported {$result->adGroupCount} ad group(s), {$result->negativeKeywordCount} negative(s)\n",
+            Console::FG_GREEN
+        );
 
         return ExitCode::OK;
     }

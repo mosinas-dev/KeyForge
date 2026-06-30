@@ -19,8 +19,7 @@ final class RsaLengthValidator
     public const MIN_DESCRIPTIONS = 2;
     public const MAX_DESCRIPTIONS = 4;
 
-    /** @return string[] violations; empty means valid */
-    public function validate(AdCopy $copy): array
+    public function validate(AdCopy $copy): RsaValidationResult
     {
         $violations = [];
 
@@ -49,11 +48,12 @@ final class RsaLengthValidator
             }
         }
 
-        return $violations;
+        return new RsaValidationResult($violations);
     }
 
+    /** Convenience predicate over validate(). */
     public function isValid(AdCopy $copy): bool
     {
-        return $this->validate($copy) === [];
+        return $this->validate($copy)->isValid();
     }
 }

@@ -85,7 +85,7 @@ class ExportStageTest extends Unit
             new PgKeywordRepository(Yii::$app->db),
             new PgNegativeKeywordRepository(Yii::$app->db),
             new GoogleAdsEditorExporter()
-        ))->export(self::PROJECT_ID);
+        ))->export(self::PROJECT_ID)->files;
 
         $campaignRows = $this->records($files['campaigns.csv']);
         $keywordRow = array_values(array_filter($campaignRows, static fn ($r) => $r['Keyword'] !== ''))[0];
@@ -119,7 +119,7 @@ class ExportStageTest extends Unit
             new PgKeywordRepository(Yii::$app->db),
             new PgNegativeKeywordRepository(Yii::$app->db),
             new GoogleAdsEditorExporter()
-        ))->export(self::PROJECT_ID);
+        ))->export(self::PROJECT_ID)->files;
         $keywords = array_column($this->records($files['campaigns.csv']), 'Keyword');
 
         $this->assertContains('website builder', $keywords);

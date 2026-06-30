@@ -10,7 +10,7 @@ namespace common\adgen;
  * kf_responsive_search_ad.headlines / .descriptions (jsonb). Plain DTO (no SOLID
  * ceremony, §12).
  */
-final class AdCopy
+final readonly class AdCopy
 {
     /**
      * @param array<int,array{text:string,pin:?int}> $headlines

@@ -31,7 +31,7 @@ class TemplateAdCopyGeneratorTest extends Unit
         $request = new AdCopyRequest('en', 'https://site.pro/en', ['website builder', 'free website builder'], 'Site.pro');
         $copy = $this->generator->generate($request);
 
-        $this->assertSame([], $this->validator->validate($copy), 'generated copy must satisfy RSA limits');
+        $this->assertSame([], $this->validator->validate($copy)->violations, 'generated copy must satisfy RSA limits');
         $this->assertSame('Site.pro', $copy->headlines[0]['text']);
         $this->assertSame(1, $copy->headlines[0]['pin'], 'brand headline pinned to position 1');
     }
