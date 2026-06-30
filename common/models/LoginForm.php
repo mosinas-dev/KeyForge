@@ -10,7 +10,7 @@ use yii\base\Model;
 /**
  * Login form
  */
-class LoginForm extends Model
+final class LoginForm extends Model
 {
     public string $username = '';
     public string $password = '';

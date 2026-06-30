@@ -12,7 +12,7 @@ use yii\web\View;
  *
  * Provides the Bootstrap 5.3+ dark/light theme toggle script shared by frontend and backend.
  */
-class ColorModeAsset extends AssetBundle
+final class ColorModeAsset extends AssetBundle
 {
     public $sourcePath = '@common/assets/colormode';
     public $js = [

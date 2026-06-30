@@ -9,7 +9,7 @@ use yii\db\Migration;
  * replace the seed (not a blocker). Rules live as DATA, not hardcode (§1).
  * Languages cover the sample data: ru/en/pt/es/de -> https://site.pro/<lang>.
  */
-class m260629_170919_seed_initial_data extends Migration
+final class m260629_170919_seed_initial_data extends Migration
 {
     private const LANGUAGES = ['ru', 'en', 'pt', 'es', 'de'];
 

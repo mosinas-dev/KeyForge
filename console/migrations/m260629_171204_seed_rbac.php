@@ -10,7 +10,7 @@ use yii\db\Migration;
  *   admin    = manageUsers + manageConfig + (inherits) marketer
  *   marketer = importKeywords + reviewKeywords + previewCampaigns + exportCampaigns
  */
-class m260629_171204_seed_rbac extends Migration
+final class m260629_171204_seed_rbac extends Migration
 {
     public function safeUp()
     {

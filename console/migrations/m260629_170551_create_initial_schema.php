@@ -13,7 +13,7 @@ use yii\db\Migration;
  *   plus a GIN pg_trgm index on normalized_keyword for fuzzy-dedup.
  * - kf_responsive_search_ad scopes transitively via ad_group_id (no own project_id, §8).
  */
-class m260629_170551_create_initial_schema extends Migration
+final class m260629_170551_create_initial_schema extends Migration
 {
     public function safeUp()
     {

@@ -8,7 +8,7 @@ use yii\db\Migration;
  * one so GadsPrepStage can upsert groups idempotently (ON CONFLICT) without
  * deleting+recreating (which would cascade-delete RSAs in Phase 5).
  */
-class m260630_043826_unique_ad_group_intent_language extends Migration
+final class m260630_043826_unique_ad_group_intent_language extends Migration
 {
     public function safeUp()
     {

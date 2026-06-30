@@ -41,7 +41,7 @@ use yii\helpers\Console;
  * `new`ed here (DIP, §12); the controller is the composition root that assembles
  * stages from them. Port bindings live in common/config/main.php.
  */
-class KeyforgeController extends Controller
+final class KeyforgeController extends Controller
 {
     /** Tenant scope; tenant UI is deferred (§13) so it defaults to the seeded project. */
     public int $projectId = 1;

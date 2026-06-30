@@ -26,7 +26,7 @@ use yii\bootstrap5\Alert as BootstrapAlert;
  * @author Kartik Visweswaran <kartikv2@gmail.com>
  * @author Alexander Makarov <sam@rmcreative.ru>
  */
-class Alert extends \yii\bootstrap5\Widget
+final class Alert extends \yii\bootstrap5\Widget
 {
     /**
      * @var array the alert types configuration for the flash messages.
