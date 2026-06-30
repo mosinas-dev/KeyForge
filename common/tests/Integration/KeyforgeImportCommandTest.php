@@ -22,7 +22,8 @@ class KeyforgeImportCommandTest extends Unit
 
     private function controller(): KeyforgeController
     {
-        return new KeyforgeController('keyforge', Yii::$app);
+        // Built via the DI container so injected services/ports are resolved.
+        return Yii::createObject(KeyforgeController::class, ['keyforge', Yii::$app]);
     }
 
     private function keywordCount(string $sourceType): int

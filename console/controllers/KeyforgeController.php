@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace console\controllers;
 
+use common\adgen\AdCopyGenerator;
 use common\adgen\RsaLengthValidator;
-use common\adgen\TemplateAdCopyGenerator;
+use common\export\CampaignExporter;
 use common\pipeline\PipelineContext;
 use common\pipeline\PipelineRunner;
 use common\pipeline\stages\AdGenerationStage;
@@ -31,10 +32,14 @@ use yii\console\ExitCode;
 use yii\helpers\Console;
 
 /**
- * KeyForge pipeline CLI. `import` runs ingest + the cleaning pipeline (§2.1–2.6).
- * Later phases append prepare-gads / export. The cleaning pass is idempotent and
- * incremental — re-running it reconsiders all active (status='new') keywords —
- * so importing several files and re-cleaning each time still dedups across files.
+ * KeyForge pipeline CLI. `import` runs ingest + the cleaning pipeline (§2.1–2.6),
+ * `prepare-gads` runs GAds-prep + RSA generation (§2.7–2.9). The cleaning pass is
+ * idempotent and incremental — re-running it reconsiders all active keywords — so
+ * importing several files and re-cleaning each time still dedups across files.
+ *
+ * Dependencies (stateless services + ports) are injected by the DI container, not
+ * `new`ed here (DIP, §12); the controller is the composition root that assembles
+ * stages from them. Port bindings live in common/config/main.php.
  */
 class KeyforgeController extends Controller
 {
@@ -45,6 +50,23 @@ class KeyforgeController extends Controller
     private const CLEANING_STAGE_ORDER = [
         'junk_filter', 'brand_classify', 'language_detect', 'intent_classify', 'fuzzy_dedup', 'volume_filter',
     ];
+
+    public function __construct(
+        $id,
+        $module,
+        private KeywordNormalizer $keywordNormalizer,
+        private ImportHashCalculator $importHashCalculator,
+        private JunkClassifier $junkClassifier,
+        private TermMatcher $termMatcher,
+        private LanguageDetector $languageDetector,
+        private IntentClassifier $intentClassifier,
+        private AdCopyGenerator $adCopyGenerator,
+        private RsaLengthValidator $rsaLengthValidator,
+        private CampaignExporter $campaignExporter,
+        array $config = []
+    ) {
+        parent::__construct($id, $module, $config);
+    }
 
     public function options($actionID): array
     {
@@ -85,8 +107,8 @@ class KeyforgeController extends Controller
             $source,
             basename($path),
             Yii::$app->db,
-            new ImportHashCalculator(),
-            new KeywordNormalizer()
+            $this->importHashCalculator,
+            $this->keywordNormalizer
         );
         $context = $ingest->run(new PipelineContext($this->projectId));
         $ingestStats = $context->stageStats()['ingest'];
@@ -112,8 +134,8 @@ class KeyforgeController extends Controller
     {
         $db = Yii::$app->db;
         $runner = new PipelineRunner([
-            new GadsPrepStage($db, new TermMatcher()),
-            new AdGenerationStage($db, new TemplateAdCopyGenerator(), new RsaLengthValidator(), new LanguageDetector()),
+            new GadsPrepStage($db, $this->termMatcher),
+            new AdGenerationStage($db, $this->adCopyGenerator, $this->rsaLengthValidator, $this->languageDetector),
         ]);
         $context = $runner->run(new PipelineContext($this->projectId));
 
@@ -134,11 +156,11 @@ class KeyforgeController extends Controller
         $db = Yii::$app->db;
 
         return [
-            new JunkFilterStage($db, new JunkClassifier()),
-            new BrandClassifyStage($db, new TermMatcher()),
-            new LanguageDetectStage($db, new LanguageDetector()),
-            new IntentClassifyStage($db, new IntentClassifier()),
-            new FuzzyDedupStage($db, new KeywordNormalizer()),
+            new JunkFilterStage($db, $this->junkClassifier),
+            new BrandClassifyStage($db, $this->termMatcher),
+            new LanguageDetectStage($db, $this->languageDetector),
+            new IntentClassifyStage($db, $this->intentClassifier),
+            new FuzzyDedupStage($db, $this->keywordNormalizer),
             new VolumeFilterStage($db),
         ];
     }

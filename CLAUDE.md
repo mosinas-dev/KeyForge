@@ -25,6 +25,7 @@
 6. **Не строить отложенное (§13 spec).** Outbox/Saga/DAG/async/multi-tenant/API-источники — только по триггеру. Это YAGNI-нарушение.
 7. **Тесты на реальном Postgres** (Testcontainers), не sqlite-мок — иначе `pg_trgm`/advisory-локи не проверяются.
 8. **PHP 8.5 идиомы.** **Constructor property promotion** во ВСЕХ классах — не объявлять поля отдельно и присваивать их в конструкторе (`public function __construct(private Connection $db) {}`, не `private Connection $db; … $this->db = $db;`). Так же использовать современные возможности языка (enum, readonly, `match`, named args, `??=`), где они уместны.
+9. **DI, не `new` зависимостей.** Сервисы и порты получаются через DI-контейнер Yii2 (constructor injection / `Yii::createObject`), а не создаются `new` в вызывающем коде. Порт→адаптер биндится в `common/config/main.php` (`container.singletons`) — замена LLM/экспортёра = одна строка. Контроллер/команда = composition root: собирает стадии из инжектнутых зависимостей; рантайм-параметры (файл, источник) передаются явно. `new` допустим только для сборки рантайм-объектов (стадии, DTO), не для сервисов/портов.
 
 ---
 

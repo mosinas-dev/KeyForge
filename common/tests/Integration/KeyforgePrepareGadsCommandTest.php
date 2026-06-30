@@ -32,7 +32,8 @@ class KeyforgePrepareGadsCommandTest extends Unit
     {
         $this->insertEligibleKeyword('website builder', 'en');
 
-        $exit = (new KeyforgeController('keyforge', Yii::$app))->actionPrepareGads();
+        $controller = Yii::createObject(KeyforgeController::class, ['keyforge', Yii::$app]);
+        $exit = $controller->actionPrepareGads();
         $this->assertSame(ExitCode::OK, $exit);
 
         $group = Yii::$app->db->createCommand(
