@@ -13,12 +13,12 @@ use common\pipeline\stages\IntentClassifyStage;
 use common\pipeline\stages\JunkFilterStage;
 use common\pipeline\stages\LanguageDetectStage;
 use common\pipeline\stages\VolumeFilterStage;
-use common\services\BrandMatcher;
 use common\services\ImportHashCalculator;
 use common\services\IntentClassifier;
 use common\services\JunkClassifier;
 use common\services\KeywordNormalizer;
 use common\services\LanguageDetector;
+use common\services\TermMatcher;
 use common\sources\CsvSourceCatalog;
 use InvalidArgumentException;
 use Yii;
@@ -106,7 +106,7 @@ class KeyforgeController extends Controller
 
         return [
             new JunkFilterStage($db, new JunkClassifier()),
-            new BrandClassifyStage($db, new BrandMatcher()),
+            new BrandClassifyStage($db, new TermMatcher()),
             new LanguageDetectStage($db, new LanguageDetector()),
             new IntentClassifyStage($db, new IntentClassifier()),
             new FuzzyDedupStage($db, new KeywordNormalizer()),

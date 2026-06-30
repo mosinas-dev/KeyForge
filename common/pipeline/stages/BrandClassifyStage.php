@@ -7,7 +7,7 @@ namespace common\pipeline\stages;
 use common\pipeline\KeywordStatus;
 use common\pipeline\PipelineContext;
 use common\pipeline\PipelineStage;
-use common\services\BrandMatcher;
+use common\services\TermMatcher;
 use yii\db\Connection;
 
 /**
@@ -19,9 +19,9 @@ use yii\db\Connection;
 final class BrandClassifyStage implements PipelineStage
 {
     private Connection $db;
-    private BrandMatcher $matcher;
+    private TermMatcher $matcher;
 
-    public function __construct(Connection $db, BrandMatcher $matcher)
+    public function __construct(Connection $db, TermMatcher $matcher)
     {
         $this->db = $db;
         $this->matcher = $matcher;
@@ -41,7 +41,7 @@ final class BrandClassifyStage implements PipelineStage
 
         if ($brandTerms !== []) {
             foreach ($activeKeywords as $keyword) {
-                if (!$this->matcher->isBrand((string) $keyword['normalized_keyword'], $brandTerms)) {
+                if (!$this->matcher->matchesAny((string) $keyword['normalized_keyword'], $brandTerms)) {
                     continue;
                 }
                 $this->db->createCommand()

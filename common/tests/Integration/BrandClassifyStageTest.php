@@ -7,7 +7,7 @@ namespace common\tests\Integration;
 use Codeception\Test\Unit;
 use common\pipeline\PipelineContext;
 use common\pipeline\stages\BrandClassifyStage;
-use common\services\BrandMatcher;
+use common\services\TermMatcher;
 use Yii;
 
 /**
@@ -40,7 +40,7 @@ class BrandClassifyStageTest extends Unit
 
     private function runStage(): void
     {
-        (new BrandClassifyStage(Yii::$app->db, new BrandMatcher()))->run(new PipelineContext(self::PROJECT_ID));
+        (new BrandClassifyStage(Yii::$app->db, new TermMatcher()))->run(new PipelineContext(self::PROJECT_ID));
     }
 
     public function testFlagsBrandKeywordsOnly(): void
