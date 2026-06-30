@@ -4,32 +4,7 @@ declare(strict_types=1);
 
 namespace console\controllers;
 
-use common\adgen\AdCopyGenerator;
-use common\adgen\RsaLengthValidator;
-use common\export\CampaignExporter;
-use common\pipeline\PipelineContext;
-use common\pipeline\PipelineRunner;
-use common\pipeline\stages\AdGenerationStage;
-use common\pipeline\stages\BrandClassifyStage;
-use common\pipeline\stages\ExportStage;
-use common\pipeline\stages\FuzzyDedupStage;
-use common\pipeline\stages\GadsPrepStage;
-use common\pipeline\stages\IngestStage;
-use common\pipeline\stages\IntentClassifyStage;
-use common\pipeline\stages\JunkFilterStage;
-use common\pipeline\stages\LanguageDetectStage;
-use common\pipeline\stages\VolumeFilterStage;
-use common\repositories\AdGroupRepositoryInterface;
-use common\repositories\ConfigRepositoryInterface;
-use common\repositories\ImportBatchRepositoryInterface;
-use common\repositories\KeywordRepositoryInterface;
-use common\repositories\NegativeKeywordRepositoryInterface;
-use common\services\ImportHashCalculator;
-use common\services\IntentClassifier;
-use common\services\JunkClassifier;
-use common\services\KeywordNormalizer;
-use common\services\LanguageDetector;
-use common\services\TermMatcher;
+use common\services\KeywordPipelineService;
 use common\sources\CsvSourceCatalog;
 use InvalidArgumentException;
 use Yii;
@@ -39,13 +14,12 @@ use yii\helpers\Console;
 use yii\helpers\FileHelper;
 
 /**
- * KeyForge pipeline CLI. `import` runs ingest + the cleaning pipeline (§2.1–2.6),
- * `prepare-gads` runs GAds-prep + RSA generation (§2.7–2.9), `export` writes the
- * Google Ads Editor files (§2.10). The cleaning pass is idempotent and incremental.
+ * KeyForge pipeline CLI. `import` runs ingest + cleaning (§2.1–2.6), `prepare-gads`
+ * runs GAds-prep + RSA (§2.7–2.9), `export` writes the Google Ads Editor files (§2.10).
  *
- * Composition root (§15.6): all services/ports/repositories are injected by the DI
- * container; the controller only assembles stages from them and passes runtime
- * params (file path, output dir) explicitly.
+ * Composition root (§15.6): the pipeline is orchestrated by the injected
+ * KeywordPipelineService; the controller validates input, calls the service, and
+ * reports. Runtime params (file path, output dir) are passed explicitly.
  */
 final class KeyforgeController extends Controller
 {
@@ -55,7 +29,6 @@ final class KeyforgeController extends Controller
     /** Where `export` writes the Google Ads Editor files. */
     public string $outputDir = '@runtime/export';
 
-    /** Stage funnel order printed after a run (§2.2–2.6). */
     private const CLEANING_STAGE_ORDER = [
         'junk_filter', 'brand_classify', 'language_detect', 'intent_classify', 'fuzzy_dedup', 'volume_filter',
     ];
@@ -63,20 +36,7 @@ final class KeyforgeController extends Controller
     public function __construct(
         $id,
         $module,
-        private KeywordRepositoryInterface $keywords,
-        private ConfigRepositoryInterface $configRepository,
-        private AdGroupRepositoryInterface $adGroups,
-        private NegativeKeywordRepositoryInterface $negatives,
-        private ImportBatchRepositoryInterface $batches,
-        private KeywordNormalizer $keywordNormalizer,
-        private ImportHashCalculator $importHashCalculator,
-        private JunkClassifier $junkClassifier,
-        private TermMatcher $termMatcher,
-        private LanguageDetector $languageDetector,
-        private IntentClassifier $intentClassifier,
-        private AdCopyGenerator $adCopyGenerator,
-        private RsaLengthValidator $rsaLengthValidator,
-        private CampaignExporter $campaignExporter,
+        private KeywordPipelineService $pipeline,
         array $config = []
     ) {
         parent::__construct($id, $module, $config);
@@ -109,10 +69,8 @@ final class KeyforgeController extends Controller
 
             return ExitCode::DATAERR;
         }
-
-        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-        if ($extension !== 'csv') {
-            $this->stderr("Only .csv sources are wired up so far (got '.{$extension}')\n", Console::FG_RED);
+        if (strtolower(pathinfo($path, PATHINFO_EXTENSION)) !== 'csv') {
+            $this->stderr("Only .csv sources are wired up so far\n", Console::FG_RED);
 
             return ExitCode::DATAERR;
         }
@@ -125,42 +83,27 @@ final class KeyforgeController extends Controller
             return ExitCode::DATAERR;
         }
 
-        $ingest = new IngestStage(
-            $source,
-            basename($path),
-            $this->keywords,
-            $this->batches,
-            $this->importHashCalculator,
-            $this->keywordNormalizer
-        );
-        $context = $ingest->run(new PipelineContext($this->projectId));
-        $ingestStats = $context->stageStats()['ingest'];
-
+        $context = $this->pipeline->importSource($this->projectId, $source, basename($path));
+        $ingest = $context->stageStats()['ingest'];
         $this->stdout(
             "Imported {$source->sourceType()} from " . basename($path)
-            . ": {$ingestStats['out']} new / {$ingestStats['in']} rows (batch #{$context->importBatchId})\n",
+            . ": {$ingest['out']} new / {$ingest['in']} rows (batch #{$context->importBatchId})\n",
             Console::FG_GREEN
         );
-
-        $context = (new PipelineRunner($this->cleaningStages()))->run($context);
-        $this->printCleaningFunnel($context);
+        foreach (self::CLEANING_STAGE_ORDER as $stageName) {
+            $stats = $context->stageStats()[$stageName] ?? null;
+            if ($stats !== null) {
+                $this->stdout("  {$stageName}: {$stats['out']}/{$stats['in']} active\n");
+            }
+        }
 
         return ExitCode::OK;
     }
 
-    /**
-     * GAds-prep + RSA generation (§2.7–2.9): mark used/forbidden/opportunity, build
-     * STAG ad groups, then generate a validated RSA per group. Run after importing
-     * all source files.
-     */
+    /** GAds-prep + RSA generation (§2.7–2.9). Run after importing all sources. */
     public function actionPrepareGads(): int
     {
-        $runner = new PipelineRunner([
-            new GadsPrepStage($this->keywords, $this->configRepository, $this->adGroups, $this->termMatcher),
-            new AdGenerationStage($this->keywords, $this->adGroups, $this->configRepository, $this->adCopyGenerator, $this->rsaLengthValidator, $this->languageDetector),
-        ]);
-        $context = $runner->run(new PipelineContext($this->projectId));
-
+        $context = $this->pipeline->prepareCampaigns($this->projectId);
         $prep = $context->stageStats()['gads_prep'];
         $ads = $context->stageStats()['ad_generation'];
         $this->stdout(
@@ -172,21 +115,16 @@ final class KeyforgeController extends Controller
         return ExitCode::OK;
     }
 
-    /**
-     * Export (§2.10): write the Google Ads Editor files (campaigns + negatives) to
-     * outputDir. Run after prepare-gads.
-     */
+    /** Export (§2.10): write the Google Ads Editor files to outputDir. */
     public function actionExport(): int
     {
-        $result = (new ExportStage($this->adGroups, $this->keywords, $this->negatives, $this->campaignExporter))
-            ->export($this->projectId);
+        $result = $this->pipeline->export($this->projectId);
 
         $dir = Yii::getAlias($this->outputDir);
         FileHelper::createDirectory($dir);
         foreach ($result->files as $name => $content) {
-            $path = $dir . DIRECTORY_SEPARATOR . $name;
-            file_put_contents($path, $content);
-            $this->stdout("Wrote {$path}\n", Console::FG_GREEN);
+            file_put_contents($dir . DIRECTORY_SEPARATOR . $name, $content);
+            $this->stdout("Wrote {$dir}/{$name}\n", Console::FG_GREEN);
         }
         $this->stdout(
             "Exported {$result->adGroupCount} ad group(s), {$result->negativeKeywordCount} negative(s)\n",
@@ -194,29 +132,5 @@ final class KeyforgeController extends Controller
         );
 
         return ExitCode::OK;
-    }
-
-    /** @return \common\pipeline\PipelineStage[] the §2.2–2.6 cleaning stages in order */
-    private function cleaningStages(): array
-    {
-        return [
-            new JunkFilterStage($this->keywords, $this->negatives, $this->junkClassifier),
-            new BrandClassifyStage($this->keywords, $this->configRepository, $this->termMatcher),
-            new LanguageDetectStage($this->keywords, $this->languageDetector),
-            new IntentClassifyStage($this->keywords, $this->intentClassifier),
-            new FuzzyDedupStage($this->keywords, $this->keywordNormalizer),
-            new VolumeFilterStage($this->keywords, $this->configRepository),
-        ];
-    }
-
-    private function printCleaningFunnel(PipelineContext $context): void
-    {
-        $stats = $context->stageStats();
-        foreach (self::CLEANING_STAGE_ORDER as $stageName) {
-            if (!isset($stats[$stageName])) {
-                continue;
-            }
-            $this->stdout("  {$stageName}: {$stats[$stageName]['out']}/{$stats[$stageName]['in']} active\n");
-        }
     }
 }
