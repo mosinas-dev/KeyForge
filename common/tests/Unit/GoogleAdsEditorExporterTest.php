@@ -92,6 +92,15 @@ class GoogleAdsEditorExporterTest extends Unit
         $this->assertStringContainsString('Создайте сайт', $files['campaigns.csv']);
     }
 
+    public function testNoAdRowWhenGroupHasNoHeadlines(): void
+    {
+        $files = $this->exporter->export([$this->group(['headlines' => [], 'descriptions' => []])], []);
+        $rows = $this->records($files['campaigns.csv']);
+
+        $this->assertCount(0, array_filter($rows, static fn ($r) => $r['Headline 1'] !== ''), 'no empty ad row');
+        $this->assertCount(1, array_filter($rows, static fn ($r) => $r['Keyword'] !== ''), 'keyword rows still exported');
+    }
+
     public function testNegativesExportedSeparately(): void
     {
         $files = $this->exporter->export([], ['casino', 'asdkjh qwe']);

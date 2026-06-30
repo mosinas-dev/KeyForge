@@ -35,7 +35,10 @@ final class GoogleAdsEditorExporter implements CampaignExporter
             foreach ($group['keywords'] as $keyword) {
                 $writer->insertOne($this->keywordRow($group, (string) $keyword));
             }
-            $writer->insertOne($this->adRow($group));
+            // No ad copy (e.g. RSA generation failed) -> keyword rows only, no empty ad row.
+            if ($group['headlines'] !== []) {
+                $writer->insertOne($this->adRow($group));
+            }
         }
 
         return $writer->toString();
