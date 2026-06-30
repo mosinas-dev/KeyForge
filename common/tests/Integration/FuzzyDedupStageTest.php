@@ -97,6 +97,26 @@ class FuzzyDedupStageTest extends Unit
         $this->assertMergedInto($f, $g);
     }
 
+    public function testIncrementalRecanonizationKeepsChainFlat(): void
+    {
+        // Multi-pass (like multi-file import): a higher-volume duplicate arrives
+        // later and becomes the new canon — earlier merged rows must re-point to it,
+        // never to a now-merged intermediate.
+        $first = $this->insert('free website builder', 'en', 27000);
+        $this->runStage();
+
+        $wordOrder = $this->insert('website builder free', 'en', 27000); // merges into $first (tie -> lower id)
+        $this->runStage();
+        $this->assertMergedInto($wordOrder, $first);
+
+        $bigger = $this->insert('free website builder', 'en', 38000); // new canon over $first
+        $this->runStage();
+
+        $this->assertCanon($bigger);
+        $this->assertMergedInto($first, $bigger);
+        $this->assertMergedInto($wordOrder, $bigger);
+    }
+
     public function testFuzzyTypoMergesViaTrgm(): void
     {
         $similarity = (float) Yii::$app->db->createCommand(

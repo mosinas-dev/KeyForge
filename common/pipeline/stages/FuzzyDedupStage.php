@@ -107,6 +107,13 @@ final class FuzzyDedupStage implements PipelineStage
                     ['status' => KeywordStatus::MERGED, 'merged_into_keyword_id' => $canon],
                     ['id' => $id]
                 )->execute();
+                // Re-point rows merged into a former canon (incremental passes) to the
+                // new canon, so merged_into never chains through a merged row.
+                $this->db->createCommand(
+                    'UPDATE kf_keyword SET merged_into_keyword_id = :canon
+                     WHERE project_id = :p AND merged_into_keyword_id = :former',
+                    [':canon' => $canon, ':p' => $context->projectId, ':former' => $id]
+                )->execute();
                 $merged++;
             }
         }
