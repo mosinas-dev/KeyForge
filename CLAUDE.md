@@ -127,6 +127,7 @@ keyforge/
 │   │   └── stages/                 # по классу на стадию §2 spec
 │   │       ├── IngestStage.php
 │   │       ├── JunkFilterStage.php
+│   │       ├── BrandClassifyStage.php
 │   │       ├── LanguageDetectStage.php
 │   │       ├── IntentClassifyStage.php
 │   │       ├── FuzzyDedupStage.php

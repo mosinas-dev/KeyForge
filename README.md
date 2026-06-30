@@ -1,92 +1,66 @@
 # KeyForge
 
-Платформа автоматизации работы маркетолога **Site.pro**: импорт ключевых слов из
-нескольких источников → чистка → группировка по языку/интенту → генерация Google Ads
-кампаний (RSA) → экспорт в формат **Google Ads Editor**.
+Платформа автоматизации работы маркетолога **Site.pro**: импорт ключевых слов →
+чистка → группировка по языку/интенту → генерация Google Ads RSA → экспорт в
+формат **Google Ads Editor**.
 
-Боль, которую закрываем: ручная чистка/группировка ключей и сборка кампаний. Цель —
-быстрее, проще, **предсказуемо**.
+Стек: PHP 8.5 · Yii2 (advanced: `console` + `backend` + `common`) · PostgreSQL 18
+(`pg_trgm`) · league/csv · Docker.
 
-**Стек:** PHP 8.5 · Yii2 (advanced: `console` + `backend` + `common`) · PostgreSQL 18
-(`pg_trgm`) · league/csv · Docker · Codeception.
+> Контекст, правила разработки и архитектура — в [`CLAUDE.md`](CLAUDE.md).
+> Полный спец/алгоритм — [`docs/AGENTIC_SPEC.md`](docs/AGENTIC_SPEC.md);
+> план по фазам — [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md);
+> формат выгрузки — [`docs/gads_export_format.md`](docs/gads_export_format.md).
 
 ---
 
-## Быстрый старт (zero-touch)
+## Быстрый старт
 
 ```bash
-docker compose up -d        # build → ждёт healthcheck БД → авто-migrate+seed → :8080
-# или: make up
+docker compose up -d        # build → миграции+seed → админка на :8080  (или: make up)
 ```
 
-- Админка: **http://localhost:8080** → логин **`admin`** / **`admin-password`**
-  (дефолтный сид; смените пароль для shared/prod).
-- Останавливается дефолтно на дашборде KeyForge: upload / keywords / preview / export.
-
-`docker compose up -d` поднимает: `keyforge-postgres` (PG18), `keyforge-app` (php-fpm,
-авто-миграции+seed), `keyforge-nginx` (отдаёт `backend/web` на :8080).
+Админка: **http://localhost:8080** → логин **`admin`** / **`admin-password`**
+(дефолтный сид; смените пароль для shared/prod). Открывается на дашборде KeyForge:
+upload → keywords → preview → export.
 
 ---
 
 ## Конвейер (CLI)
 
 ```bash
-# внутри контейнера: docker compose exec keyforge-app php yii <cmd>
-yii keyforge/import <file.csv>     # §2.1–2.6: ingest + чистка (junk/lang/intent/dedup/volume)
-yii keyforge/prepare-gads          # §2.7–2.9: used/forbidden/competitor-gap, STAG-группы, RSA
-yii keyforge/export [--outputDir=] # §2.10: campaigns.csv + negatives.csv (Google Ads Editor)
+docker compose exec keyforge-app php yii keyforge/import sample_data/ahrefs_organic_keywords.csv
+docker compose exec keyforge-app php yii keyforge/prepare-gads
+docker compose exec keyforge-app php yii keyforge/export   # --outputDir=@runtime/export
 ```
 
-Источники (CSV) распознаются по имени файла (`sample_data/`): `ahrefs_organic`,
-`ahrefs_paid`, `google_ads`, `search_console`. Импорт **идемпотентен** (повторный
-импорт того же файла → 0 новых, по `import_hash`).
-
-Формат выгрузки — см. [`docs/gads_export_format.md`](docs/gads_export_format.md).
+- `import` распознаёт источник по **точному имени файла**; из коробки заведены
+  четыре: `ahrefs_organic_keywords.csv`, `ahrefs_paid_keywords.csv`,
+  `google_ads_keywords.csv`, `search_console_queries.csv` (см. `sample_data/`).
+  Произвольные файлы грузятся через админку (там source-тип выбирается явно).
+- `import` прогоняет стадии §2.1–2.6: ingest → junk → brand → language → intent →
+  dedup → volume. Идемпотентен (повторный импорт того же файла → 0 новых).
 
 ---
 
 ## Тесты
 
 ```bash
-make test          # полный сьют (unit + integration) в контейнере на реальном PostgreSQL
+make test     # полный сьют (unit + integration) в контейнере на реальном PostgreSQL
 ```
 
-Локально (если порт PG проброшен на хост, `5432`):
-
-```bash
-KEYFORGE_DB_HOST=127.0.0.1 KEYFORGE_TEST_DB_NAME=keyforge_test YII_ENV=test \
-  php vendor/bin/codecept run
-```
-
-Интеграционные тесты идут на **реальном PostgreSQL** (не sqlite) — иначе `pg_trgm`/
-оконные функции не проверить. TDD: тесты первыми, edge-кейсы из `docs/AGENTIC_SPEC.md` §11.
-
----
-
-## Архитектура (кратко)
-
-- **Пайплайн** (`common/pipeline`): линейный `PipelineRunner` над `PipelineStage` —
-  Ingest → Junk → Brand → Language → Intent → FuzzyDedup → Volume → GadsPrep →
-  AdGeneration → Export. Оркестрация — `KeywordPipelineService`.
-- **Порты/адаптеры** (§15): `KeywordSourceProvider` (Csv/Json), `AdCopyGenerator`
-  (Template; реальный LLM — отложенная замена), `CampaignExporter` (GoogleAdsEditor).
-- **Репозитории** (`common/repositories`): весь SQL за `*RepositoryInterface` /
-  `Pg*Repository`; стадии не ходят в БД напрямую и не зависят от Yii.
-- **Правила — данные** (`kf_config_*`): бренды, forbidden, пороги объёма,
-  `language → url`. Не хардкод.
-- **Схема**: префикс `kf_`, `project_id` на всех tenant-таблицах, `UNIQUE(project_id,
-  import_hash)`, GIN `pg_trgm` на `normalized_keyword`.
-
-Подробности — `docs/AGENTIC_SPEC.md`, план — `docs/IMPLEMENTATION_PLAN.md`, решения —
-`docs/adr/`. Правила разработки и контекст для агентов — `CLAUDE.md`.
+Интеграционные тесты идут на **реальном PostgreSQL** (не sqlite) — иначе `pg_trgm` и
+advisory-локи не проверить (см. `CLAUDE.md` правило 7). `make test` сам мигрирует
+выделенную тестовую БД `keyforge_test`; запуск `codecept` напрямую с хоста требует,
+чтобы `keyforge_test` была предварительно мигрирована.
 
 ---
 
 ## CI / образ
 
 GitHub Actions (`.github/workflows/ci.yml`): тесты (PHP 8.5 + PG18) → build →
-push в **GHCR** (`ghcr.io/<owner>/<repo>:latest`). Образ multi-stage
-(`base → vendor → test-гейт → runtime`); runtime не соберётся при красных unit-тестах.
+push в GHCR. Образ multi-stage с тест-гейтом (детали — `CLAUDE.md` «Docker/CI» +
+`Dockerfile`); runtime не собирается при красных unit-тестах.
 
 ---
 
