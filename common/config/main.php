@@ -14,6 +14,13 @@ return [
         'singletons' => [
             \common\adgen\AdCopyGenerator::class => \common\adgen\TemplateAdCopyGenerator::class,
             \common\export\CampaignExporter::class => \common\export\GoogleAdsEditorExporter::class,
+            // Repository ports -> PG adapters (§15.4). Closures wire the app db at the
+            // composition root; nothing else `new`s a repository.
+            \common\repositories\KeywordRepositoryInterface::class => static fn () => new \common\repositories\PgKeywordRepository(\Yii::$app->db),
+            \common\repositories\ConfigRepositoryInterface::class => static fn () => new \common\repositories\PgConfigRepository(\Yii::$app->db),
+            \common\repositories\AdGroupRepositoryInterface::class => static fn () => new \common\repositories\PgAdGroupRepository(\Yii::$app->db),
+            \common\repositories\NegativeKeywordRepositoryInterface::class => static fn () => new \common\repositories\PgNegativeKeywordRepository(\Yii::$app->db),
+            \common\repositories\ImportBatchRepositoryInterface::class => static fn () => new \common\repositories\PgImportBatchRepository(\Yii::$app->db),
         ],
     ],
     'aliases' => [
