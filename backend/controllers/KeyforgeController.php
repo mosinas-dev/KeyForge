@@ -56,9 +56,18 @@ final class KeyforgeController extends Controller
 
     public function actionIndex(): string
     {
+        $count = static fn (array $condition): int => (int) Keyword::find()
+            ->where(['project_id' => self::PROJECT_ID])->andWhere($condition)->count();
+
         return $this->render('index', [
-            'keywordCount' => (int) Keyword::find()->where(['project_id' => self::PROJECT_ID])->count(),
-            'activeCount' => (int) Keyword::find()->where(['project_id' => self::PROJECT_ID, 'status' => 'new'])->count(),
+            'total' => $count([]),
+            'active' => $count(['status' => 'new', 'is_brand' => false, 'is_forbidden' => false]),
+            'used' => $count(['status' => 'used']),
+            'brand' => $count(['is_brand' => true]),
+            'forbidden' => $count(['is_forbidden' => true]),
+            'junk' => $count(['status' => 'junk']),
+            'merged' => $count(['status' => 'merged']),
+            'lowVolume' => $count(['status' => 'low_volume']),
             'groupCount' => (int) AdGroup::find()->where(['project_id' => self::PROJECT_ID])->count(),
         ]);
     }
@@ -91,6 +100,11 @@ final class KeyforgeController extends Controller
             $value = Yii::$app->request->get($filter);
             if ($value !== null && $value !== '') {
                 $query->andWhere([$filter => $value]);
+            }
+        }
+        foreach (['is_brand', 'is_forbidden'] as $flag) {
+            if (Yii::$app->request->get($flag) !== null) {
+                $query->andWhere([$flag => true]);
             }
         }
 

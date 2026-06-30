@@ -24,6 +24,10 @@ $this->title = 'Ключи';
             'search_volume',
             ['attribute' => 'is_brand', 'format' => 'boolean'],
             ['attribute' => 'is_opportunity', 'format' => 'boolean'],
+            [
+                'label' => 'Excluded as',
+                'value' => static fn (\common\models\Keyword $k): string => $k->exclusionReason() ?: '—',
+            ],
         ],
     ]) ?>
 </div>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace common\models;
 
+use common\pipeline\KeywordStatus;
 use yii\db\ActiveRecord;
 
 /**
@@ -31,4 +32,29 @@ final class Keyword extends ActiveRecord
     {
         return 'kf_keyword';
     }
+
+    /**
+     * Human-readable reason this keyword is excluded from generated campaigns, for
+     * the admin review grid; empty string = active/eligible. Terminal statuses win,
+     * then the brand/forbidden flags (a brand or already-used keyword is filtered
+     * out of Ads — §9).
+     */
+    public function exclusionReason(): string
+    {
+        return match (true) {
+            $this->status === KeywordStatus::Junk->value => 'junk → negative',
+            $this->status === KeywordStatus::Merged->value => 'merged (duplicate)',
+            $this->status === KeywordStatus::LowVolume->value => 'low volume',
+            $this->status === KeywordStatus::Used->value => 'already used',
+            (bool) $this->is_brand => 'brand',
+            (bool) $this->is_forbidden => 'forbidden',
+            default => '',
+        };
+    }
+
+    public function isActive(): bool
+    {
+        return $this->exclusionReason() === '';
+    }
 }
+
