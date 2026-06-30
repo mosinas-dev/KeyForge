@@ -68,11 +68,11 @@ class PgKeywordRepositoryTest extends Unit
         $this->assertSame('de', $row['detected_language']);
         $this->assertSame('commercial', $row['intent_class']);
         $this->assertTrue((bool) $row['is_brand']);
-        $this->assertSame(KeywordStatus::NEW, $row['status']);
+        $this->assertSame(KeywordStatus::New->value, $row['status']);
 
         $repo->markJunk($id);
         $this->assertSame(
-            KeywordStatus::JUNK,
+            KeywordStatus::Junk->value,
             Yii::$app->db->createCommand('SELECT status FROM kf_keyword WHERE id = :id', [':id' => $id])->queryScalar()
         );
         $this->assertSame([], array_filter($repo->findActive(self::PROJECT_ID), static fn ($r) => (int) $r['id'] === $id), 'junk no longer active');

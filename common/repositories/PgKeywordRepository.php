@@ -49,7 +49,7 @@ final class PgKeywordRepository implements KeywordRepositoryInterface
                 ':country' => $sourceCountry,
                 ':url' => $sourceUrl,
                 ':hash' => $importHash,
-                ':status' => KeywordStatus::NEW,
+                ':status' => KeywordStatus::New->value,
             ]
         )->execute();
 
@@ -61,7 +61,7 @@ final class PgKeywordRepository implements KeywordRepositoryInterface
         $rows = $this->db->createCommand(
             'SELECT id, normalized_keyword, detected_language, search_volume FROM kf_keyword
              WHERE project_id = :p AND status = :s',
-            [':p' => $projectId, ':s' => KeywordStatus::NEW]
+            [':p' => $projectId, ':s' => KeywordStatus::New->value]
         )->queryAll();
 
         return array_map(static fn (array $row): array => [
@@ -77,7 +77,7 @@ final class PgKeywordRepository implements KeywordRepositoryInterface
         $rows = $this->db->createCommand(
             'SELECT id, normalized_keyword FROM kf_keyword
              WHERE project_id = :p AND status = :s AND is_forbidden = false',
-            [':p' => $projectId, ':s' => KeywordStatus::NEW]
+            [':p' => $projectId, ':s' => KeywordStatus::New->value]
         )->queryAll();
 
         return array_map(static fn (array $row): array => [
@@ -108,12 +108,12 @@ final class PgKeywordRepository implements KeywordRepositoryInterface
 
     public function markJunk(int $keywordId): void
     {
-        $this->update($keywordId, ['status' => KeywordStatus::JUNK]);
+        $this->update($keywordId, ['status' => KeywordStatus::Junk->value]);
     }
 
     public function markMerged(int $keywordId, int $canonKeywordId): void
     {
-        $this->update($keywordId, ['status' => KeywordStatus::MERGED, 'merged_into_keyword_id' => $canonKeywordId]);
+        $this->update($keywordId, ['status' => KeywordStatus::Merged->value, 'merged_into_keyword_id' => $canonKeywordId]);
     }
 
     public function repointMergedCanon(int $formerCanonId, int $newCanonId): void
@@ -134,7 +134,7 @@ final class PgKeywordRepository implements KeywordRepositoryInterface
               AND a.id < b.id
              WHERE a.project_id = :p AND a.status = :s AND b.status = :s
                AND similarity(a.normalized_keyword, b.normalized_keyword) >= ' . $similarityThreshold,
-            [':p' => $projectId, ':s' => KeywordStatus::NEW]
+            [':p' => $projectId, ':s' => KeywordStatus::New->value]
         )->queryAll();
 
         return array_map(static fn (array $row): array => ['a' => (int) $row['a'], 'b' => (int) $row['b']], $rows);
@@ -145,7 +145,7 @@ final class PgKeywordRepository implements KeywordRepositoryInterface
         return $this->db->createCommand(
             'SELECT DISTINCT detected_language FROM kf_keyword
              WHERE project_id = :p AND status = :s AND detected_language IS NOT NULL',
-            [':p' => $projectId, ':s' => KeywordStatus::NEW]
+            [':p' => $projectId, ':s' => KeywordStatus::New->value]
         )->queryColumn();
     }
 
@@ -155,7 +155,7 @@ final class PgKeywordRepository implements KeywordRepositoryInterface
             'SELECT percentile_cont(:pct) WITHIN GROUP (ORDER BY search_volume)
              FROM kf_keyword
              WHERE project_id = :p AND status = :s AND detected_language = :lang AND search_volume IS NOT NULL',
-            [':pct' => $percentile, ':p' => $projectId, ':s' => KeywordStatus::NEW, ':lang' => $language]
+            [':pct' => $percentile, ':p' => $projectId, ':s' => KeywordStatus::New->value, ':lang' => $language]
         )->queryScalar();
 
         return $value === null || $value === false ? null : (float) $value;
@@ -168,9 +168,9 @@ final class PgKeywordRepository implements KeywordRepositoryInterface
              WHERE project_id = :p AND status = :new AND detected_language = :lang
                AND search_volume IS NOT NULL AND search_volume < :threshold',
             [
-                ':low' => KeywordStatus::LOW_VOLUME,
+                ':low' => KeywordStatus::LowVolume->value,
                 ':p' => $projectId,
-                ':new' => KeywordStatus::NEW,
+                ':new' => KeywordStatus::New->value,
                 ':lang' => $language,
                 ':threshold' => $threshold,
             ]
@@ -185,7 +185,7 @@ final class PgKeywordRepository implements KeywordRepositoryInterface
                AND (k.source_type = :src
                     OR EXISTS (SELECT 1 FROM kf_keyword m
                                WHERE m.merged_into_keyword_id = k.id AND m.source_type = :src))',
-            [':used' => KeywordStatus::USED, ':p' => $projectId, ':new' => KeywordStatus::NEW, ':src' => self::SOURCE_GOOGLE_ADS]
+            [':used' => KeywordStatus::Used->value, ':p' => $projectId, ':new' => KeywordStatus::New->value, ':src' => self::SOURCE_GOOGLE_ADS]
         )->execute();
     }
 
@@ -197,7 +197,7 @@ final class PgKeywordRepository implements KeywordRepositoryInterface
                AND (k.source_type = :src
                     OR EXISTS (SELECT 1 FROM kf_keyword m
                                WHERE m.merged_into_keyword_id = k.id AND m.source_type = :src))',
-            [':p' => $projectId, ':new' => KeywordStatus::NEW, ':src' => self::SOURCE_COMPETITOR]
+            [':p' => $projectId, ':new' => KeywordStatus::New->value, ':src' => self::SOURCE_COMPETITOR]
         )->execute();
     }
 
@@ -207,7 +207,7 @@ final class PgKeywordRepository implements KeywordRepositoryInterface
             'SELECT DISTINCT intent_class, detected_language FROM kf_keyword
              WHERE project_id = :p AND status = :s AND intent_class = :intent
                AND is_brand = false AND is_forbidden = false AND detected_language IS NOT NULL',
-            [':p' => $projectId, ':s' => KeywordStatus::NEW, ':intent' => self::INTENT_COMMERCIAL]
+            [':p' => $projectId, ':s' => KeywordStatus::New->value, ':intent' => self::INTENT_COMMERCIAL]
         )->queryAll();
 
         return array_map(static fn (array $row): array => [
@@ -223,7 +223,7 @@ final class PgKeywordRepository implements KeywordRepositoryInterface
              WHERE project_id = :p AND status = :s AND intent_class = :intent AND detected_language = :lang
                AND is_brand = false AND is_forbidden = false
              ORDER BY search_volume DESC NULLS LAST, id ASC',
-            [':p' => $projectId, ':s' => KeywordStatus::NEW, ':intent' => $intentClass, ':lang' => $language]
+            [':p' => $projectId, ':s' => KeywordStatus::New->value, ':intent' => $intentClass, ':lang' => $language]
         )->queryColumn();
     }
 
