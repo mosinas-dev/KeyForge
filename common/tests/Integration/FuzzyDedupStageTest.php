@@ -7,6 +7,7 @@ namespace common\tests\Integration;
 use Codeception\Test\Unit;
 use common\pipeline\PipelineContext;
 use common\pipeline\stages\FuzzyDedupStage;
+use common\repositories\PgKeywordRepository;
 use common\services\KeywordNormalizer;
 use Yii;
 
@@ -59,7 +60,7 @@ class FuzzyDedupStageTest extends Unit
 
     private function runStage(): void
     {
-        (new FuzzyDedupStage(Yii::$app->db, new KeywordNormalizer()))->run(new PipelineContext(self::PROJECT_ID));
+        (new FuzzyDedupStage(new PgKeywordRepository(Yii::$app->db), new KeywordNormalizer()))->run(new PipelineContext(self::PROJECT_ID));
     }
 
     public function testExactDuplicatesMergeToMaxVolumeCanonWithTieBreak(): void

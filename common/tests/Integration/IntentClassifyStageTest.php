@@ -7,6 +7,7 @@ namespace common\tests\Integration;
 use Codeception\Test\Unit;
 use common\pipeline\PipelineContext;
 use common\pipeline\stages\IntentClassifyStage;
+use common\repositories\PgKeywordRepository;
 use common\services\IntentClassifier;
 use Yii;
 
@@ -44,7 +45,7 @@ class IntentClassifyStageTest extends Unit
         $informational = $this->insertKeyword('what is a website builder');
         $commercial = $this->insertKeyword('free website builder');
 
-        (new IntentClassifyStage(Yii::$app->db, new IntentClassifier()))->run(new PipelineContext(self::PROJECT_ID));
+        (new IntentClassifyStage(new PgKeywordRepository(Yii::$app->db), new IntentClassifier()))->run(new PipelineContext(self::PROJECT_ID));
 
         $this->assertSame(IntentClassifier::INFORMATIONAL, $this->intent($informational));
         $this->assertSame(IntentClassifier::COMMERCIAL, $this->intent($commercial));

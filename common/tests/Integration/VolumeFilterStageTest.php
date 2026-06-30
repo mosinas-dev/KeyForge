@@ -7,6 +7,8 @@ namespace common\tests\Integration;
 use Codeception\Test\Unit;
 use common\pipeline\PipelineContext;
 use common\pipeline\stages\VolumeFilterStage;
+use common\repositories\PgConfigRepository;
+use common\repositories\PgKeywordRepository;
 use Yii;
 
 /**
@@ -40,7 +42,8 @@ class VolumeFilterStageTest extends Unit
 
     private function runStage(): void
     {
-        (new VolumeFilterStage(Yii::$app->db))->run(new PipelineContext(self::PROJECT_ID));
+        (new VolumeFilterStage(new PgKeywordRepository(Yii::$app->db), new PgConfigRepository(Yii::$app->db)))
+            ->run(new PipelineContext(self::PROJECT_ID));
     }
 
     public function testFiltersBelowPercentileWithinLanguage(): void

@@ -11,14 +11,19 @@ use common\pipeline\PipelineContext;
 use common\pipeline\PipelineRunner;
 use common\pipeline\stages\AdGenerationStage;
 use common\pipeline\stages\BrandClassifyStage;
+use common\pipeline\stages\ExportStage;
 use common\pipeline\stages\FuzzyDedupStage;
 use common\pipeline\stages\GadsPrepStage;
 use common\pipeline\stages\IngestStage;
-use common\pipeline\stages\ExportStage;
 use common\pipeline\stages\IntentClassifyStage;
 use common\pipeline\stages\JunkFilterStage;
 use common\pipeline\stages\LanguageDetectStage;
 use common\pipeline\stages\VolumeFilterStage;
+use common\repositories\AdGroupRepositoryInterface;
+use common\repositories\ConfigRepositoryInterface;
+use common\repositories\ImportBatchRepositoryInterface;
+use common\repositories\KeywordRepositoryInterface;
+use common\repositories\NegativeKeywordRepositoryInterface;
 use common\services\ImportHashCalculator;
 use common\services\IntentClassifier;
 use common\services\JunkClassifier;
@@ -35,13 +40,12 @@ use yii\helpers\FileHelper;
 
 /**
  * KeyForge pipeline CLI. `import` runs ingest + the cleaning pipeline (§2.1–2.6),
- * `prepare-gads` runs GAds-prep + RSA generation (§2.7–2.9). The cleaning pass is
- * idempotent and incremental — re-running it reconsiders all active keywords — so
- * importing several files and re-cleaning each time still dedups across files.
+ * `prepare-gads` runs GAds-prep + RSA generation (§2.7–2.9), `export` writes the
+ * Google Ads Editor files (§2.10). The cleaning pass is idempotent and incremental.
  *
- * Dependencies (stateless services + ports) are injected by the DI container, not
- * `new`ed here (DIP, §12); the controller is the composition root that assembles
- * stages from them. Port bindings live in common/config/main.php.
+ * Composition root (§15.6): all services/ports/repositories are injected by the DI
+ * container; the controller only assembles stages from them and passes runtime
+ * params (file path, output dir) explicitly.
  */
 final class KeyforgeController extends Controller
 {
@@ -59,6 +63,11 @@ final class KeyforgeController extends Controller
     public function __construct(
         $id,
         $module,
+        private KeywordRepositoryInterface $keywords,
+        private ConfigRepositoryInterface $configRepository,
+        private AdGroupRepositoryInterface $adGroups,
+        private NegativeKeywordRepositoryInterface $negatives,
+        private ImportBatchRepositoryInterface $batches,
         private KeywordNormalizer $keywordNormalizer,
         private ImportHashCalculator $importHashCalculator,
         private JunkClassifier $junkClassifier,
@@ -119,7 +128,8 @@ final class KeyforgeController extends Controller
         $ingest = new IngestStage(
             $source,
             basename($path),
-            Yii::$app->db,
+            $this->keywords,
+            $this->batches,
             $this->importHashCalculator,
             $this->keywordNormalizer
         );
@@ -145,10 +155,9 @@ final class KeyforgeController extends Controller
      */
     public function actionPrepareGads(): int
     {
-        $db = Yii::$app->db;
         $runner = new PipelineRunner([
-            new GadsPrepStage($db, $this->termMatcher),
-            new AdGenerationStage($db, $this->adCopyGenerator, $this->rsaLengthValidator, $this->languageDetector),
+            new GadsPrepStage($this->keywords, $this->configRepository, $this->adGroups, $this->termMatcher),
+            new AdGenerationStage($this->keywords, $this->adGroups, $this->configRepository, $this->adCopyGenerator, $this->rsaLengthValidator, $this->languageDetector),
         ]);
         $context = $runner->run(new PipelineContext($this->projectId));
 
@@ -169,7 +178,8 @@ final class KeyforgeController extends Controller
      */
     public function actionExport(): int
     {
-        $files = (new ExportStage(Yii::$app->db, $this->campaignExporter))->export($this->projectId);
+        $files = (new ExportStage($this->adGroups, $this->keywords, $this->negatives, $this->campaignExporter))
+            ->export($this->projectId);
 
         $dir = Yii::getAlias($this->outputDir);
         FileHelper::createDirectory($dir);
@@ -185,15 +195,13 @@ final class KeyforgeController extends Controller
     /** @return \common\pipeline\PipelineStage[] the §2.2–2.6 cleaning stages in order */
     private function cleaningStages(): array
     {
-        $db = Yii::$app->db;
-
         return [
-            new JunkFilterStage($db, $this->junkClassifier),
-            new BrandClassifyStage($db, $this->termMatcher),
-            new LanguageDetectStage($db, $this->languageDetector),
-            new IntentClassifyStage($db, $this->intentClassifier),
-            new FuzzyDedupStage($db, $this->keywordNormalizer),
-            new VolumeFilterStage($db),
+            new JunkFilterStage($this->keywords, $this->negatives, $this->junkClassifier),
+            new BrandClassifyStage($this->keywords, $this->configRepository, $this->termMatcher),
+            new LanguageDetectStage($this->keywords, $this->languageDetector),
+            new IntentClassifyStage($this->keywords, $this->intentClassifier),
+            new FuzzyDedupStage($this->keywords, $this->keywordNormalizer),
+            new VolumeFilterStage($this->keywords, $this->configRepository),
         ];
     }
 

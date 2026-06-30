@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace common\pipeline\stages;
 
-use common\pipeline\KeywordStatus;
 use common\pipeline\PipelineContext;
 use common\pipeline\PipelineStage;
+use common\repositories\KeywordRepositoryInterface;
 use common\services\IntentClassifier;
-use yii\db\Connection;
 
 /**
  * Intent classification (§2.4): set intent_class on each active keyword. Only
@@ -17,23 +16,16 @@ use yii\db\Connection;
 final class IntentClassifyStage implements PipelineStage
 {
     public function __construct(
-        private Connection $db,
+        private KeywordRepositoryInterface $keywords,
         private IntentClassifier $classifier,
     ) {
     }
 
     public function run(PipelineContext $context): PipelineContext
     {
-        $activeKeywords = $this->db->createCommand(
-            'SELECT id, normalized_keyword FROM kf_keyword WHERE project_id = :p AND status = :s',
-            [':p' => $context->projectId, ':s' => KeywordStatus::NEW]
-        )->queryAll();
-
+        $activeKeywords = $this->keywords->findActive($context->projectId);
         foreach ($activeKeywords as $keyword) {
-            $intent = $this->classifier->classify((string) $keyword['normalized_keyword']);
-            $this->db->createCommand()
-                ->update('kf_keyword', ['intent_class' => $intent], ['id' => $keyword['id']])
-                ->execute();
+            $this->keywords->setIntent($keyword['id'], $this->classifier->classify($keyword['normalized_keyword']));
         }
 
         $received = count($activeKeywords);

@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace common\pipeline\stages;
 
-use common\pipeline\KeywordStatus;
 use common\pipeline\PipelineContext;
 use common\pipeline\PipelineStage;
+use common\repositories\ConfigRepositoryInterface;
+use common\repositories\KeywordRepositoryInterface;
 use common\services\TermMatcher;
-use yii\db\Connection;
 
 /**
  * Brand classifier (§9): flags is_brand=true on active keywords matching a
@@ -19,31 +19,22 @@ use yii\db\Connection;
 final class BrandClassifyStage implements PipelineStage
 {
     public function __construct(
-        private Connection $db,
+        private KeywordRepositoryInterface $keywords,
+        private ConfigRepositoryInterface $config,
         private TermMatcher $matcher,
     ) {
     }
 
     public function run(PipelineContext $context): PipelineContext
     {
-        $brandTerms = $this->db->createCommand(
-            'SELECT term FROM kf_config_brand_term WHERE project_id = :p',
-            [':p' => $context->projectId]
-        )->queryColumn();
-
-        $activeKeywords = $this->db->createCommand(
-            'SELECT id, normalized_keyword FROM kf_keyword WHERE project_id = :p AND status = :s',
-            [':p' => $context->projectId, ':s' => KeywordStatus::NEW]
-        )->queryAll();
+        $brandTerms = $this->config->brandTerms($context->projectId);
+        $activeKeywords = $this->keywords->findActive($context->projectId);
 
         if ($brandTerms !== []) {
             foreach ($activeKeywords as $keyword) {
-                if (!$this->matcher->matchesAny((string) $keyword['normalized_keyword'], $brandTerms)) {
-                    continue;
+                if ($this->matcher->matchesAny($keyword['normalized_keyword'], $brandTerms)) {
+                    $this->keywords->setBrand($keyword['id']);
                 }
-                $this->db->createCommand()
-                    ->update('kf_keyword', ['is_brand' => true], ['id' => $keyword['id']])
-                    ->execute();
             }
         }
 

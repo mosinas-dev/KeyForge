@@ -7,6 +7,8 @@ namespace common\tests\Integration;
 use Codeception\Test\Unit;
 use common\pipeline\PipelineContext;
 use common\pipeline\stages\JunkFilterStage;
+use common\repositories\PgKeywordRepository;
+use common\repositories\PgNegativeKeywordRepository;
 use common\services\JunkClassifier;
 use Yii;
 
@@ -47,7 +49,11 @@ class JunkFilterStageTest extends Unit
 
     private function runStage(): PipelineContext
     {
-        $stage = new JunkFilterStage(Yii::$app->db, new JunkClassifier());
+        $stage = new JunkFilterStage(
+            new PgKeywordRepository(Yii::$app->db),
+            new PgNegativeKeywordRepository(Yii::$app->db),
+            new JunkClassifier()
+        );
 
         return $stage->run(new PipelineContext(self::PROJECT_ID));
     }

@@ -7,6 +7,9 @@ namespace common\tests\Integration;
 use Codeception\Test\Unit;
 use common\pipeline\PipelineContext;
 use common\pipeline\stages\GadsPrepStage;
+use common\repositories\PgAdGroupRepository;
+use common\repositories\PgConfigRepository;
+use common\repositories\PgKeywordRepository;
 use common\services\TermMatcher;
 use Yii;
 
@@ -87,7 +90,12 @@ class GadsPrepStageTest extends Unit
 
     private function runStage(): void
     {
-        (new GadsPrepStage(Yii::$app->db, new TermMatcher()))->run(new PipelineContext(self::PROJECT_ID));
+        (new GadsPrepStage(
+            new PgKeywordRepository(Yii::$app->db),
+            new PgConfigRepository(Yii::$app->db),
+            new PgAdGroupRepository(Yii::$app->db),
+            new TermMatcher()
+        ))->run(new PipelineContext(self::PROJECT_ID));
     }
 
     public function testUsedKeywordIsMarkedUsedAndNotOpportunity(): void

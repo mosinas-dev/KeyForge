@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace common\pipeline\stages;
 
-use common\pipeline\KeywordStatus;
 use common\pipeline\PipelineContext;
 use common\pipeline\PipelineStage;
+use common\repositories\KeywordRepositoryInterface;
 use common\services\LanguageDetector;
-use yii\db\Connection;
 
 /**
  * Language detection (§2.3): detect each active keyword's language by its TEXT
@@ -20,26 +19,20 @@ use yii\db\Connection;
 final class LanguageDetectStage implements PipelineStage
 {
     public function __construct(
-        private Connection $db,
+        private KeywordRepositoryInterface $keywords,
         private LanguageDetector $detector,
     ) {
     }
 
     public function run(PipelineContext $context): PipelineContext
     {
-        $activeKeywords = $this->db->createCommand(
-            'SELECT id, normalized_keyword FROM kf_keyword WHERE project_id = :p AND status = :s',
-            [':p' => $context->projectId, ':s' => KeywordStatus::NEW]
-        )->queryAll();
-
+        $activeKeywords = $this->keywords->findActive($context->projectId);
         foreach ($activeKeywords as $keyword) {
-            $detected = $this->detector->detect((string) $keyword['normalized_keyword']);
+            $detected = $this->detector->detect($keyword['normalized_keyword']);
             if ($detected === null) {
                 continue; // keep source_language fallback
             }
-            $this->db->createCommand()
-                ->update('kf_keyword', ['detected_language' => $detected], ['id' => $keyword['id']])
-                ->execute();
+            $this->keywords->setLanguage($keyword['id'], $detected);
         }
 
         $received = count($activeKeywords);

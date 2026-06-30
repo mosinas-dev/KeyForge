@@ -7,6 +7,8 @@ namespace common\tests\Integration;
 use Codeception\Test\Unit;
 use common\pipeline\PipelineContext;
 use common\pipeline\stages\IngestStage;
+use common\repositories\PgImportBatchRepository;
+use common\repositories\PgKeywordRepository;
 use common\services\ImportHashCalculator;
 use common\services\KeywordNormalizer;
 use common\sources\CsvSource;
@@ -47,7 +49,8 @@ class IngestStageTest extends Unit
         $stage = new IngestStage(
             new CsvSource($path, $sourceType, self::MAP),
             basename($path),
-            Yii::$app->db,
+            new PgKeywordRepository(Yii::$app->db),
+            new PgImportBatchRepository(Yii::$app->db),
             new ImportHashCalculator(),
             new KeywordNormalizer()
         );

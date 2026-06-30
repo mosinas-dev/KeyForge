@@ -12,6 +12,9 @@ use common\adgen\RsaLengthValidator;
 use common\adgen\TemplateAdCopyGenerator;
 use common\pipeline\PipelineContext;
 use common\pipeline\stages\AdGenerationStage;
+use common\repositories\PgAdGroupRepository;
+use common\repositories\PgConfigRepository;
+use common\repositories\PgKeywordRepository;
 use common\services\LanguageDetector;
 use RuntimeException;
 use Yii;
@@ -57,7 +60,14 @@ class AdGenerationStageTest extends Unit
 
     private function stage(AdCopyGenerator $generator): AdGenerationStage
     {
-        return new AdGenerationStage(Yii::$app->db, $generator, new RsaLengthValidator(), new LanguageDetector());
+        return new AdGenerationStage(
+            new PgKeywordRepository(Yii::$app->db),
+            new PgAdGroupRepository(Yii::$app->db),
+            new PgConfigRepository(Yii::$app->db),
+            $generator,
+            new RsaLengthValidator(),
+            new LanguageDetector()
+        );
     }
 
     public function testGeneratesValidRsaWithPinnedBrand(): void

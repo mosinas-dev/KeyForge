@@ -7,6 +7,9 @@ namespace common\tests\Integration;
 use Codeception\Test\Unit;
 use common\export\GoogleAdsEditorExporter;
 use common\pipeline\stages\ExportStage;
+use common\repositories\PgAdGroupRepository;
+use common\repositories\PgKeywordRepository;
+use common\repositories\PgNegativeKeywordRepository;
 use League\Csv\Reader;
 use Yii;
 
@@ -77,7 +80,12 @@ class ExportStageTest extends Unit
         $this->insertValidRsa($group, ['Site.pro', 'Easy Website Builder', 'Start Free Today'], ['Build your site fast.', 'No code needed.']);
         $this->insertNegative('????');
 
-        $files = (new ExportStage(Yii::$app->db, new GoogleAdsEditorExporter()))->export(self::PROJECT_ID);
+        $files = (new ExportStage(
+            new PgAdGroupRepository(Yii::$app->db),
+            new PgKeywordRepository(Yii::$app->db),
+            new PgNegativeKeywordRepository(Yii::$app->db),
+            new GoogleAdsEditorExporter()
+        ))->export(self::PROJECT_ID);
 
         $campaignRows = $this->records($files['campaigns.csv']);
         $keywordRow = array_values(array_filter($campaignRows, static fn ($r) => $r['Keyword'] !== ''))[0];
@@ -106,7 +114,12 @@ class ExportStageTest extends Unit
             [':p' => self::PROJECT_ID, ':h' => hash('sha256', 'export-used|' . $this->counter++)]
         )->execute();
 
-        $files = (new ExportStage(Yii::$app->db, new GoogleAdsEditorExporter()))->export(self::PROJECT_ID);
+        $files = (new ExportStage(
+            new PgAdGroupRepository(Yii::$app->db),
+            new PgKeywordRepository(Yii::$app->db),
+            new PgNegativeKeywordRepository(Yii::$app->db),
+            new GoogleAdsEditorExporter()
+        ))->export(self::PROJECT_ID);
         $keywords = array_column($this->records($files['campaigns.csv']), 'Keyword');
 
         $this->assertContains('website builder', $keywords);

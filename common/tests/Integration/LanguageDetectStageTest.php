@@ -7,6 +7,7 @@ namespace common\tests\Integration;
 use Codeception\Test\Unit;
 use common\pipeline\PipelineContext;
 use common\pipeline\stages\LanguageDetectStage;
+use common\repositories\PgKeywordRepository;
 use common\services\LanguageDetector;
 use Yii;
 
@@ -43,7 +44,7 @@ class LanguageDetectStageTest extends Unit
 
     private function runStage(): void
     {
-        (new LanguageDetectStage(Yii::$app->db, new LanguageDetector()))->run(new PipelineContext(self::PROJECT_ID));
+        (new LanguageDetectStage(new PgKeywordRepository(Yii::$app->db), new LanguageDetector()))->run(new PipelineContext(self::PROJECT_ID));
     }
 
     public function testDetectsByTextAndOverwrites(): void

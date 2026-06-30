@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace common\pipeline\stages;
 
-use common\pipeline\KeywordStatus;
 use common\pipeline\PipelineContext;
 use common\pipeline\PipelineStage;
+use common\repositories\KeywordRepositoryInterface;
 use common\services\KeywordNormalizer;
-use yii\db\Connection;
 
 /**
  * Fuzzy dedup (§2.5). Clusters active keywords that are duplicates, keeping the
@@ -27,18 +26,14 @@ final class FuzzyDedupStage implements PipelineStage
     private const SIMILARITY_THRESHOLD = 0.85;
 
     public function __construct(
-        private Connection $db,
+        private KeywordRepositoryInterface $keywords,
         private KeywordNormalizer $normalizer,
     ) {
     }
 
     public function run(PipelineContext $context): PipelineContext
     {
-        $keywords = $this->db->createCommand(
-            'SELECT id, normalized_keyword, detected_language, search_volume FROM kf_keyword
-             WHERE project_id = :p AND status = :s',
-            [':p' => $context->projectId, ':s' => KeywordStatus::NEW]
-        )->queryAll();
+        $keywords = $this->keywords->findActive($context->projectId);
 
         $received = count($keywords);
         if ($received < 2) {
@@ -51,12 +46,12 @@ final class FuzzyDedupStage implements PipelineStage
         $volumeById = [];
         $keyGroups = [];
         foreach ($keywords as $keyword) {
-            $id = (int) $keyword['id'];
+            $id = $keyword['id'];
             $parent[$id] = $id;
-            $volumeById[$id] = $keyword['search_volume'] === null ? null : (int) $keyword['search_volume'];
+            $volumeById[$id] = $keyword['search_volume'];
             // language-scoped dedup key: same spelling in different languages stays distinct.
             $language = $keyword['detected_language'] ?? "\0";
-            $key = $language . '|' . $this->normalizer->dedupKey((string) $keyword['normalized_keyword']);
+            $key = $language . '|' . $this->normalizer->dedupKey($keyword['normalized_keyword']);
             $keyGroups[$key][] = $id;
         }
 
@@ -68,22 +63,10 @@ final class FuzzyDedupStage implements PipelineStage
         }
 
         // 2) collapse pg_trgm near-duplicates (same language)
-        $pairs = $this->db->createCommand(
-            'SELECT a.id AS a, b.id AS b
-             FROM kf_keyword a
-             JOIN kf_keyword b
-               ON a.project_id = b.project_id
-              AND a.detected_language IS NOT DISTINCT FROM b.detected_language
-              AND a.id < b.id
-             WHERE a.project_id = :p AND a.status = :s AND b.status = :s
-               AND similarity(a.normalized_keyword, b.normalized_keyword) >= ' . self::SIMILARITY_THRESHOLD,
-            [':p' => $context->projectId, ':s' => KeywordStatus::NEW]
-        )->queryAll();
-        foreach ($pairs as $pair) {
-            $this->union($parent, (int) $pair['a'], (int) $pair['b']);
+        foreach ($this->keywords->findSimilarPairs($context->projectId, self::SIMILARITY_THRESHOLD) as $pair) {
+            $this->union($parent, $pair['a'], $pair['b']);
         }
 
-        // cluster, then fold each cluster into its canon
         $clusters = [];
         foreach (array_keys($parent) as $id) {
             $clusters[$this->find($parent, $id)][] = $id;
@@ -99,18 +82,10 @@ final class FuzzyDedupStage implements PipelineStage
                 if ($id === $canon) {
                     continue;
                 }
-                $this->db->createCommand()->update(
-                    'kf_keyword',
-                    ['status' => KeywordStatus::MERGED, 'merged_into_keyword_id' => $canon],
-                    ['id' => $id]
-                )->execute();
+                $this->keywords->markMerged($id, $canon);
                 // Re-point rows merged into a former canon (incremental passes) to the
                 // new canon, so merged_into never chains through a merged row.
-                $this->db->createCommand(
-                    'UPDATE kf_keyword SET merged_into_keyword_id = :canon
-                     WHERE project_id = :p AND merged_into_keyword_id = :former',
-                    [':canon' => $canon, ':p' => $context->projectId, ':former' => $id]
-                )->execute();
+                $this->keywords->repointMergedCanon($id, $canon);
                 $merged++;
             }
         }
@@ -120,7 +95,11 @@ final class FuzzyDedupStage implements PipelineStage
         return $context;
     }
 
-    /** Canon = highest search_volume (null treated as lowest), tie -> lowest id. */
+    /**
+     * Canon = highest search_volume (null treated as lowest), tie -> lowest id.
+     * @param int[] $ids
+     * @param array<int,?int> $volumeById
+     */
     private function pickCanon(array $ids, array $volumeById): int
     {
         usort($ids, static function (int $x, int $y) use ($volumeById): int {
