@@ -54,4 +54,31 @@ class KeywordNormalizerTest extends Unit
         $this->assertSame('', $this->normalizer->normalize(''));
         $this->assertSame('', $this->normalizer->normalize("   \t \u{00A0} "));
     }
+
+    // --- dedupKey(): token-sorted, diacritic-stripped key for fuzzy-dedup (§2.5) ---
+
+    public function testDedupKeySortsTokens(): void
+    {
+        $this->assertSame('builder website', $this->normalizer->dedupKey('website builder'));
+    }
+
+    public function testDedupKeyIsWordOrderInvariant(): void
+    {
+        $this->assertSame(
+            $this->normalizer->dedupKey('website builder free'),
+            $this->normalizer->dedupKey('free website builder'),
+            'word-order variants must share a dedup key'
+        );
+    }
+
+    public function testDedupKeyStripsLatinDiacritics(): void
+    {
+        $this->assertSame('gratis', $this->normalizer->dedupKey('grátis'));
+        $this->assertSame($this->normalizer->dedupKey('gratis'), $this->normalizer->dedupKey('grátis'));
+    }
+
+    public function testDedupKeyKeepsCyrillic(): void
+    {
+        $this->assertSame('конструктор сайтов', $this->normalizer->dedupKey('конструктор сайтов'));
+    }
 }
