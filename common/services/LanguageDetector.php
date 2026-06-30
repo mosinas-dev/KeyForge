@@ -30,11 +30,14 @@ final class LanguageDetector
         if ($normalizedKeyword === '') {
             return null;
         }
-        if (preg_match('/\p{Cyrillic}/u', $normalizedKeyword) === 1) {
+        // Lowercase so detection works on raw text too (e.g. Title-Cased ad copy),
+        // not just pre-normalized keywords; markers are stored lowercase.
+        $text = mb_strtolower($normalizedKeyword, 'UTF-8');
+        if (preg_match('/\p{Cyrillic}/u', $text) === 1) {
             return 'ru';
         }
 
-        $tokens = preg_split('/\s+/', $normalizedKeyword, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $tokens = preg_split('/\s+/', $text, -1, PREG_SPLIT_NO_EMPTY) ?: [];
         $scores = ['en' => 0, 'de' => 0, 'pt' => 0, 'es' => 0];
         foreach ($tokens as $token) {
             foreach (self::MARKERS as $language => $markerWords) {
