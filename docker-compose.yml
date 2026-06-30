@@ -38,7 +38,6 @@ services:
       - keyforge-app
     ports:
       - "8080:80"     # admin (backend/web)
-      # - "8081:81"   # frontend upload UI — enable when frontend/web exists
     volumes:
       - ./:/var/www/keyforge:ro
       - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro

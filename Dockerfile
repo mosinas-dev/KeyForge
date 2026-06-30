@@ -56,8 +56,7 @@ COPY --from=test /artifacts/unit-tests-passed /var/www/keyforge/.unit-tests-pass
 # Slim the image: tests and CI config are not needed at runtime.
 RUN rm -rf tests .github \
  && addgroup -g 1000 keyforge && adduser -u 1000 -G keyforge -S keyforge \
- && mkdir -p backend/runtime backend/web/assets \
-             frontend/runtime frontend/web/assets console/runtime \
+ && mkdir -p backend/runtime backend/web/assets console/runtime \
  && chown -R keyforge:keyforge /var/www/keyforge
 USER keyforge
 EXPOSE 9000

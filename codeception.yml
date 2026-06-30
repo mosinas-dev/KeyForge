@@ -1,6 +1,6 @@
 # Global codeception file. KeyForge domain logic lives in common/, so only the
-# common suites are wired now. backend/frontend test suites are re-enabled in
-# Phase 7 (admin/UI) when they get real tests — YAGNI until then.
+# common suites are wired now. The backend test suite is re-enabled in Phase 7
+# (admin/UI) when it gets real tests — YAGNI until then.
 include:
     - common
 paths:

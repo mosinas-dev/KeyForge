@@ -141,8 +141,7 @@ keyforge/
 ├── console/
 │   ├── controllers/               # KeyforgeController: import / prepare-gads / export
 │   └── migrations/                # схема + seed config_* (бренды, forbidden, пороги, language→url)
-├── backend/                       # админка: RBAC, AdminLTE, CRUD-ревью ключей, preview, export
-├── frontend/                      # минимальный upload-UI
+├── backend/                       # админка: RBAC, AdminLTE, upload, CRUD-ревью ключей, preview, export
 ├── config/                        # incl. gii.php
 ├── tests/
 │   ├── unit/                      # чистые функции (нормализация, интент, валидатор RSA)
@@ -167,7 +166,7 @@ vendor/bin/codecept run               # все тесты
 # Админка: http://localhost:8080/admin  (upload / data / preview / export)
 ```
 
-**Docker/CI.** Локально — `docker compose up -d` (или `make up`): zero-touch с нуля — build → ждёт healthcheck БД → авто-migrate+seed → отдаёт админку на `:8080`. Полные тесты: `make test` (профиль `test`, unit+integration на реальном Postgres). Образ **multi-stage**: `base → vendor/vendor-dev → test(гейт) → runtime`; runtime не соберётся, если unit-тесты упали. CI (`.github/workflows/ci.yml`): тесты → build → push в **GHCR** (`ghcr.io/<owner>/<repo>:latest`). Redis (очередь) и frontend-UI — за профилями/закомментированы (YAGNI). Образ по умолчанию миграции не трогает (`RUN_MIGRATIONS`, opt-in).
+**Docker/CI.** Локально — `docker compose up -d` (или `make up`): zero-touch с нуля — build → ждёт healthcheck БД → авто-migrate+seed → отдаёт админку на `:8080`. Полные тесты: `make test` (профиль `test`, unit+integration на реальном Postgres). Образ **multi-stage**: `base → vendor/vendor-dev → test(гейт) → runtime`; runtime не соберётся, если unit-тесты упали. CI (`.github/workflows/ci.yml`): тесты → build → push в **GHCR** (`ghcr.io/<owner>/<repo>:latest`). Redis (очередь) — за профилем (YAGNI). Раскладка: `console` (пайплайн) + `backend` (админка) + `common` (домен); отдельного `frontend`-приложения нет — upload-UI живёт в backend. Образ по умолчанию миграции не трогает (`RUN_MIGRATIONS`, opt-in).
 
 ---
 

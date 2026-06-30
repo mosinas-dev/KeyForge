@@ -39,8 +39,7 @@
     "autoload-dev": {
         "psr-4": {
             "common\\tests\\": ["common/tests/", "common/tests/Support"],
-            "backend\\tests\\": ["backend/tests/", "backend/tests/Support"],
-            "frontend\\tests\\": ["frontend/tests/", "frontend/tests/Support"]
+            "backend\\tests\\": ["backend/tests/", "backend/tests/Support"]
         }
     },
     "config": {
