@@ -31,7 +31,7 @@ class SiteController extends Controller
                         'allow' => true,
                     ],
                     [
-                        'actions' => ['logout', 'index'],
+                        'actions' => ['logout'],
                         'allow' => true,
                         'roles' => ['@'],
                     ],
@@ -56,16 +56,6 @@ class SiteController extends Controller
                 'class' => ErrorAction::class,
             ],
         ];
-    }
-
-    /**
-     * Displays homepage.
-     *
-     * @return string
-     */
-    public function actionIndex(): string
-    {
-        return $this->render('index');
     }
 
     /**

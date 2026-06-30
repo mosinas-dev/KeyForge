@@ -10,10 +10,6 @@ use yii\helpers\Html;
 
 $items = [
     [
-        'label' => 'Home',
-        'url' => ['/site/index'],
-    ],
-    [
         'label' => 'KeyForge',
         'visible' => !Yii::$app->user->isGuest,
         'items' => [

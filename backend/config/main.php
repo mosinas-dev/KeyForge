@@ -11,6 +11,8 @@ return [
     'id' => 'app-backend',
     'basePath' => dirname(__DIR__),
     'controllerNamespace' => 'backend\controllers',
+    // KeyForge admin is the home page; the default Yii site/index is removed.
+    'defaultRoute' => 'keyforge/index',
     'bootstrap' => ['log'],
     'modules' => [],
     'components' => [
