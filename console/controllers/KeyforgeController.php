@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace console\controllers;
 
+use common\adgen\RsaLengthValidator;
+use common\adgen\TemplateAdCopyGenerator;
 use common\pipeline\PipelineContext;
 use common\pipeline\PipelineRunner;
+use common\pipeline\stages\AdGenerationStage;
 use common\pipeline\stages\BrandClassifyStage;
 use common\pipeline\stages\FuzzyDedupStage;
 use common\pipeline\stages\GadsPrepStage;
@@ -101,17 +104,24 @@ class KeyforgeController extends Controller
     }
 
     /**
-     * GAds-prep (§2.7–2.8): mark used/forbidden/opportunity and build STAG ad groups.
-     * Run after importing all source files.
+     * GAds-prep + RSA generation (§2.7–2.9): mark used/forbidden/opportunity, build
+     * STAG ad groups, then generate a validated RSA per group. Run after importing
+     * all source files.
      */
     public function actionPrepareGads(): int
     {
-        $stage = new GadsPrepStage(Yii::$app->db, new TermMatcher());
-        $context = $stage->run(new PipelineContext($this->projectId));
-        $stats = $context->stageStats()['gads_prep'];
+        $db = Yii::$app->db;
+        $runner = new PipelineRunner([
+            new GadsPrepStage($db, new TermMatcher()),
+            new AdGenerationStage($db, new TemplateAdCopyGenerator(), new RsaLengthValidator(), new LanguageDetector()),
+        ]);
+        $context = $runner->run(new PipelineContext($this->projectId));
 
+        $prep = $context->stageStats()['gads_prep'];
+        $ads = $context->stageStats()['ad_generation'];
         $this->stdout(
-            "GAds-prep: {$stats['out']} ad group(s) from {$stats['in']} eligible keyword(s)\n",
+            "GAds-prep: {$prep['out']} ad group(s) from {$prep['in']} eligible keyword(s)\n"
+            . "RSA gen: {$ads['out']}/{$ads['in']} group(s) got a valid ad\n",
             Console::FG_GREEN
         );
 
