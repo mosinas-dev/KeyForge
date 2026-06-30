@@ -1,8 +1,9 @@
 # KeyForge
 
-Платформа автоматизации работы маркетолога **Site.pro**: импорт ключевых слов →
-чистка → группировка по языку/интенту → генерация Google Ads RSA → экспорт в
-формат **Google Ads Editor**.
+KeyForge — платформа автоматизации подготовки Google Ads кампаний. Импортирует 
+данные из Ahrefs, Google Ads и Search Console, очищает и нормализует ключевые слова, 
+группирует их по языкам и интенту, генерирует Responsive Search Ads и экспортирует 
+    кампании в формат Google Ads Editor.
 
 Стек: PHP 8.5 · Yii2 (advanced: `console` + `backend` + `common`) · PostgreSQL 18
 (`pg_trgm`) · league/csv · Docker.
