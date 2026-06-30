@@ -75,6 +75,16 @@
 **Тесты-первыми (§11):** заголовок 30/31 (граница), описание 90/91; пустой/битый JSON от LLM → перегенерация, не падение; язык ответа ≠ язык группы → reject.
 **Гейт:** валидный RSA на каждую группу, всё в лимитах символов.
 
+## Фаза 5.5 — Рефактор архитектуры (§14/§15, «точечный»)
+**Триггер:** ужесточение правил (CLAUDE §14/§15). Решение: точечный рефактор перед завершением Фаз 6–8.
+**Сделать:**
+- **Repository-слой** (порт + Pg-адаптер), весь SQL стадий → за интерфейсы: `KeywordRepositoryInterface`, `ConfigRepositoryInterface`, `AdGroupRepositoryInterface` (+ RSA), `NegativeKeywordRepositoryInterface`, `ImportBatchRepositoryInterface`. Стадии/сервисы зависят от интерфейсов, не от `Connection`/`Yii::$app` (§15.1/15.3/15.12). Биндинги — в `container.singletons`.
+- **readonly DTO:** `AdCopy`, `AdCopyRequest`.
+- **Result-объекты:** `RsaValidationResult` (вместо array/bool в `RsaLengthValidator`), `ExportResult`.
+- **НЕ делаем (YAGNI):** value-objects на каждый примитив, тотальные коллекции, Clock/Uuid-порты (в домене нет рантайм-времени/uuid — время через `CURRENT_TIMESTAMP` в Pg-адаптере).
+**Тесты:** существующие — green после рефактора (behavior-preserving); + unit на Result-объекты, integration на репозитории.
+**Гейт:** весь сьют зелёный; ни одна стадия/сервис не содержит прямого SQL или `Yii::$app`.
+
 ## Фаза 6 — Экспорт (agent A4)
 **Цель:** §2.10.
 **Сделать:** интерфейс `CampaignExporter`; `GoogleAdsEditorExporter`; `ExportStage`; команда `yii keyforge/export`. Формат Google Ads Editor (§docs/gads_export_format.md); минус-слова экспортируются отдельно.
