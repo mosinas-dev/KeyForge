@@ -14,6 +14,7 @@ use common\pipeline\stages\BrandClassifyStage;
 use common\pipeline\stages\FuzzyDedupStage;
 use common\pipeline\stages\GadsPrepStage;
 use common\pipeline\stages\IngestStage;
+use common\pipeline\stages\ExportStage;
 use common\pipeline\stages\IntentClassifyStage;
 use common\pipeline\stages\JunkFilterStage;
 use common\pipeline\stages\LanguageDetectStage;
@@ -30,6 +31,7 @@ use Yii;
 use yii\console\Controller;
 use yii\console\ExitCode;
 use yii\helpers\Console;
+use yii\helpers\FileHelper;
 
 /**
  * KeyForge pipeline CLI. `import` runs ingest + the cleaning pipeline (§2.1–2.6),
@@ -45,6 +47,9 @@ final class KeyforgeController extends Controller
 {
     /** Tenant scope; tenant UI is deferred (§13) so it defaults to the seeded project. */
     public int $projectId = 1;
+
+    /** Where `export` writes the Google Ads Editor files. */
+    public string $outputDir = '@runtime/export';
 
     /** Stage funnel order printed after a run (§2.2–2.6). */
     private const CLEANING_STAGE_ORDER = [
@@ -70,7 +75,15 @@ final class KeyforgeController extends Controller
 
     public function options($actionID): array
     {
-        return array_merge(parent::options($actionID), in_array($actionID, ['import', 'prepare-gads'], true) ? ['projectId'] : []);
+        $options = parent::options($actionID);
+        if (in_array($actionID, ['import', 'prepare-gads', 'export'], true)) {
+            $options[] = 'projectId';
+        }
+        if ($actionID === 'export') {
+            $options[] = 'outputDir';
+        }
+
+        return $options;
     }
 
     /**
@@ -146,6 +159,25 @@ final class KeyforgeController extends Controller
             . "RSA gen: {$ads['out']}/{$ads['in']} group(s) got a valid ad\n",
             Console::FG_GREEN
         );
+
+        return ExitCode::OK;
+    }
+
+    /**
+     * Export (§2.10): write the Google Ads Editor files (campaigns + negatives) to
+     * outputDir. Run after prepare-gads.
+     */
+    public function actionExport(): int
+    {
+        $files = (new ExportStage(Yii::$app->db, $this->campaignExporter))->export($this->projectId);
+
+        $dir = Yii::getAlias($this->outputDir);
+        FileHelper::createDirectory($dir);
+        foreach ($files as $name => $content) {
+            $path = $dir . DIRECTORY_SEPARATOR . $name;
+            file_put_contents($path, $content);
+            $this->stdout("Wrote {$path}\n", Console::FG_GREEN);
+        }
 
         return ExitCode::OK;
     }
