@@ -48,6 +48,12 @@ final class CsvSourceCatalog
         return new CsvSource($filePath, $sourceType, self::COLUMN_MAPS[$sourceType]);
     }
 
+    /** @return string[] known source types (for the admin upload dropdown) */
+    public static function sourceTypes(): array
+    {
+        return array_keys(self::COLUMN_MAPS);
+    }
+
     public static function sourceTypeForFile(string $filePath): string
     {
         $name = basename($filePath);

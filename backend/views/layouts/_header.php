@@ -14,6 +14,16 @@ $items = [
         'url' => ['/site/index'],
     ],
     [
+        'label' => 'KeyForge',
+        'visible' => !Yii::$app->user->isGuest,
+        'items' => [
+            ['label' => 'Dashboard', 'url' => ['/keyforge/index']],
+            ['label' => 'Upload source', 'url' => ['/keyforge/upload']],
+            ['label' => 'Keywords', 'url' => ['/keyforge/keywords']],
+            ['label' => 'Campaign preview', 'url' => ['/keyforge/preview']],
+        ],
+    ],
+    [
         'label' => 'Login',
         'url' => ['/site/login'],
         'visible' => Yii::$app->user->isGuest,
