@@ -137,8 +137,12 @@ final class KeyforgeController extends Controller
         }
         $zip->close();
 
-        return Yii::$app->response->sendFile($zipPath, 'keyforge_export.zip', ['mimeType' => 'application/zip'])
-            ->on(Response::EVENT_AFTER_SEND, static fn () => @unlink($zipPath));
+        // NB: Component::on() returns void — attach the cleanup separately and return
+        // the Response itself (chaining on() would return null and break the : Response type).
+        $response = Yii::$app->response->sendFile($zipPath, 'keyforge_export.zip', ['mimeType' => 'application/zip']);
+        $response->on(Response::EVENT_AFTER_SEND, static fn () => @unlink($zipPath));
+
+        return $response;
     }
 
     private function import(UploadForm $form): \common\pipeline\PipelineContext
