@@ -16,13 +16,10 @@ use yii\db\Connection;
  */
 final class IntentClassifyStage implements PipelineStage
 {
-    private Connection $db;
-    private IntentClassifier $classifier;
-
-    public function __construct(Connection $db, IntentClassifier $classifier)
-    {
-        $this->db = $db;
-        $this->classifier = $classifier;
+    public function __construct(
+        private Connection $db,
+        private IntentClassifier $classifier,
+    ) {
     }
 
     public function run(PipelineContext $context): PipelineContext

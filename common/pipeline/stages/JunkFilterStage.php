@@ -18,13 +18,10 @@ use yii\db\Connection;
  */
 final class JunkFilterStage implements PipelineStage
 {
-    private Connection $db;
-    private JunkClassifier $classifier;
-
-    public function __construct(Connection $db, JunkClassifier $classifier)
-    {
-        $this->db = $db;
-        $this->classifier = $classifier;
+    public function __construct(
+        private Connection $db,
+        private JunkClassifier $classifier,
+    ) {
     }
 
     public function run(PipelineContext $context): PipelineContext

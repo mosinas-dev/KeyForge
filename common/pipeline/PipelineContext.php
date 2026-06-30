@@ -11,15 +11,13 @@ namespace common\pipeline;
  */
 final class PipelineContext
 {
-    public int $projectId;
     public ?int $importBatchId = null;
 
     /** @var array<string,array{in:int,out:int}> */
     private array $stageStats = [];
 
-    public function __construct(int $projectId)
+    public function __construct(public int $projectId)
     {
-        $this->projectId = $projectId;
     }
 
     /** Record how many rows a stage saw (in) and produced/kept (out). */

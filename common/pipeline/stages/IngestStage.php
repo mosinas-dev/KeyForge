@@ -22,24 +22,13 @@ use yii\db\Expression;
  */
 final class IngestStage implements PipelineStage
 {
-    private KeywordSourceProvider $source;
-    private string $fileName;
-    private Connection $db;
-    private ImportHashCalculator $hashCalculator;
-    private KeywordNormalizer $normalizer;
-
     public function __construct(
-        KeywordSourceProvider $source,
-        string $fileName,
-        Connection $db,
-        ImportHashCalculator $hashCalculator,
-        KeywordNormalizer $normalizer
+        private KeywordSourceProvider $source,
+        private string $fileName,
+        private Connection $db,
+        private ImportHashCalculator $hashCalculator,
+        private KeywordNormalizer $normalizer,
     ) {
-        $this->source = $source;
-        $this->fileName = $fileName;
-        $this->db = $db;
-        $this->hashCalculator = $hashCalculator;
-        $this->normalizer = $normalizer;
     }
 
     public function run(PipelineContext $context): PipelineContext

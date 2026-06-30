@@ -15,17 +15,14 @@ final class JsonSource implements KeywordSourceProvider
 {
     use SourceValueParser;
 
-    private string $filePath;
-    private string $sourceType;
-    /** @var array<string,?string> canonical field => JSON object key (or null if absent) */
-    private array $columnMap;
     private ?string $fingerprint = null;
 
-    public function __construct(string $filePath, string $sourceType, array $columnMap)
-    {
-        $this->filePath = $filePath;
-        $this->sourceType = $sourceType;
-        $this->columnMap = $columnMap;
+    /** @param array<string,?string> $columnMap canonical field => JSON object key (or null if absent) */
+    public function __construct(
+        private string $filePath,
+        private string $sourceType,
+        private array $columnMap,
+    ) {
     }
 
     public function sourceType(): string

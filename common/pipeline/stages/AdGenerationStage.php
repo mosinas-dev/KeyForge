@@ -28,21 +28,12 @@ final class AdGenerationStage implements PipelineStage
     private const MAX_ATTEMPTS = 3;
     private const KEYWORDS_PER_GROUP = 10;
 
-    private Connection $db;
-    private AdCopyGenerator $generator;
-    private RsaLengthValidator $validator;
-    private LanguageDetector $detector;
-
     public function __construct(
-        Connection $db,
-        AdCopyGenerator $generator,
-        RsaLengthValidator $validator,
-        LanguageDetector $detector
+        private Connection $db,
+        private AdCopyGenerator $generator,
+        private RsaLengthValidator $validator,
+        private LanguageDetector $detector,
     ) {
-        $this->db = $db;
-        $this->generator = $generator;
-        $this->validator = $validator;
-        $this->detector = $detector;
     }
 
     public function run(PipelineContext $context): PipelineContext

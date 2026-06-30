@@ -22,11 +22,8 @@ use yii\db\Connection;
  */
 final class VolumeFilterStage implements PipelineStage
 {
-    private Connection $db;
-
-    public function __construct(Connection $db)
+    public function __construct(private Connection $db)
     {
-        $this->db = $db;
     }
 
     public function run(PipelineContext $context): PipelineContext

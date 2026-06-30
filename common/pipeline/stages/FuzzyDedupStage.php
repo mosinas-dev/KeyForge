@@ -26,13 +26,10 @@ final class FuzzyDedupStage implements PipelineStage
 {
     private const SIMILARITY_THRESHOLD = 0.85;
 
-    private Connection $db;
-    private KeywordNormalizer $normalizer;
-
-    public function __construct(Connection $db, KeywordNormalizer $normalizer)
-    {
-        $this->db = $db;
-        $this->normalizer = $normalizer;
+    public function __construct(
+        private Connection $db,
+        private KeywordNormalizer $normalizer,
+    ) {
     }
 
     public function run(PipelineContext $context): PipelineContext

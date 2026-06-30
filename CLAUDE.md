@@ -24,6 +24,7 @@
 5. **Не врать. Не знаешь — скажи «I don't know»** и спроси/исследуй. Никаких выдуманных API Yii2 или несуществующих методов.
 6. **Не строить отложенное (§13 spec).** Outbox/Saga/DAG/async/multi-tenant/API-источники — только по триггеру. Это YAGNI-нарушение.
 7. **Тесты на реальном Postgres** (Testcontainers), не sqlite-мок — иначе `pg_trgm`/advisory-локи не проверяются.
+8. **PHP 8.5 идиомы.** **Constructor property promotion** во ВСЕХ классах — не объявлять поля отдельно и присваивать их в конструкторе (`public function __construct(private Connection $db) {}`, не `private Connection $db; … $this->db = $db;`). Так же использовать современные возможности языка (enum, readonly, `match`, named args, `??=`), где они уместны.
 
 ---
 

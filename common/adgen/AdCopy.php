@@ -12,19 +12,14 @@ namespace common\adgen;
  */
 final class AdCopy
 {
-    /** @var array<int,array{text:string,pin:?int}> */
-    public array $headlines;
-    /** @var array<int,array{text:string,pin:?int}> */
-    public array $descriptions;
-
     /**
      * @param array<int,array{text:string,pin:?int}> $headlines
      * @param array<int,array{text:string,pin:?int}> $descriptions
      */
-    public function __construct(array $headlines, array $descriptions)
-    {
-        $this->headlines = $headlines;
-        $this->descriptions = $descriptions;
+    public function __construct(
+        public array $headlines,
+        public array $descriptions,
+    ) {
     }
 
     /**

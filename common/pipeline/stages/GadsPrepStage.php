@@ -24,13 +24,10 @@ use yii\db\Connection;
  */
 final class GadsPrepStage implements PipelineStage
 {
-    private Connection $db;
-    private TermMatcher $matcher;
-
-    public function __construct(Connection $db, TermMatcher $matcher)
-    {
-        $this->db = $db;
-        $this->matcher = $matcher;
+    public function __construct(
+        private Connection $db,
+        private TermMatcher $matcher,
+    ) {
     }
 
     public function run(PipelineContext $context): PipelineContext

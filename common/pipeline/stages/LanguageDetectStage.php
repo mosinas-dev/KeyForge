@@ -19,13 +19,10 @@ use yii\db\Connection;
  */
 final class LanguageDetectStage implements PipelineStage
 {
-    private Connection $db;
-    private LanguageDetector $detector;
-
-    public function __construct(Connection $db, LanguageDetector $detector)
-    {
-        $this->db = $db;
-        $this->detector = $detector;
+    public function __construct(
+        private Connection $db,
+        private LanguageDetector $detector,
+    ) {
     }
 
     public function run(PipelineContext $context): PipelineContext

@@ -11,18 +11,12 @@ namespace common\adgen;
  */
 final class AdCopyRequest
 {
-    public string $language;
-    public string $targetUrl;
-    /** @var string[] */
-    public array $keywords;
-    public ?string $brandHeadline;
-
     /** @param string[] $keywords */
-    public function __construct(string $language, string $targetUrl, array $keywords, ?string $brandHeadline = null)
-    {
-        $this->language = $language;
-        $this->targetUrl = $targetUrl;
-        $this->keywords = $keywords;
-        $this->brandHeadline = $brandHeadline;
+    public function __construct(
+        public string $language,
+        public string $targetUrl,
+        public array $keywords,
+        public ?string $brandHeadline = null,
+    ) {
     }
 }

@@ -11,13 +11,9 @@ namespace common\pipeline;
  */
 final class PipelineRunner
 {
-    /** @var PipelineStage[] */
-    private array $stages;
-
     /** @param PipelineStage[] $stages */
-    public function __construct(array $stages)
+    public function __construct(private array $stages)
     {
-        $this->stages = $stages;
     }
 
     public function run(PipelineContext $context): PipelineContext
