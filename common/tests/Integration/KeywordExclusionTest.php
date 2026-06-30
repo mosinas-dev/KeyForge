@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace common\tests\Unit;
+namespace common\tests\Integration;
 
 use Codeception\Test\Unit;
 use common\models\Keyword;
