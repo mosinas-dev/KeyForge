@@ -8,6 +8,7 @@ use common\pipeline\PipelineContext;
 use common\pipeline\PipelineRunner;
 use common\pipeline\stages\BrandClassifyStage;
 use common\pipeline\stages\FuzzyDedupStage;
+use common\pipeline\stages\GadsPrepStage;
 use common\pipeline\stages\IngestStage;
 use common\pipeline\stages\IntentClassifyStage;
 use common\pipeline\stages\JunkFilterStage;
@@ -44,7 +45,7 @@ class KeyforgeController extends Controller
 
     public function options($actionID): array
     {
-        return array_merge(parent::options($actionID), $actionID === 'import' ? ['projectId'] : []);
+        return array_merge(parent::options($actionID), in_array($actionID, ['import', 'prepare-gads'], true) ? ['projectId'] : []);
     }
 
     /**
@@ -95,6 +96,24 @@ class KeyforgeController extends Controller
 
         $context = (new PipelineRunner($this->cleaningStages()))->run($context);
         $this->printCleaningFunnel($context);
+
+        return ExitCode::OK;
+    }
+
+    /**
+     * GAds-prep (§2.7–2.8): mark used/forbidden/opportunity and build STAG ad groups.
+     * Run after importing all source files.
+     */
+    public function actionPrepareGads(): int
+    {
+        $stage = new GadsPrepStage(Yii::$app->db, new TermMatcher());
+        $context = $stage->run(new PipelineContext($this->projectId));
+        $stats = $context->stageStats()['gads_prep'];
+
+        $this->stdout(
+            "GAds-prep: {$stats['out']} ad group(s) from {$stats['in']} eligible keyword(s)\n",
+            Console::FG_GREEN
+        );
 
         return ExitCode::OK;
     }
